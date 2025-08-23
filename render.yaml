@@ -1,0 +1,15 @@
+# Render configuration for deployment
+services:
+  - type: web
+    name: feedstream
+    env: node
+    buildCommand: npm install --no-optional && npm run build
+    startCommand: npm run preview -- --port $PORT
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NPM_CONFIG_PLATFORM
+        value: linux
+    build:
+      os: ubuntu22.04
+      nodeVersion: 18.x
