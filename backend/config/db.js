@@ -6,9 +6,9 @@ let pool;
 async function ensureDatabaseExists() {
   const host = process.env.MYSQL_HOST || process.env.DB_HOST || 'sh003.bigrock.com';
   const port = Number(process.env.MYSQL_PORT || process.env.DB_PORT || 3306);
-  const user = process.env.MYSQL_USER || process.env.DB_USERNAME || 'root';
-  const password = process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '';
-  const dbName = process.env.MYSQL_DATABASE || process.env.DB_DATABASE || 'feedstream';
+  const user = process.env.MYSQL_USER || process.env.DB_USERNAME || 'ctronyt8_root';
+  const password = process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || 'ctx@2025';
+  const dbName = process.env.MYSQL_DATABASE || process.env.DB_DATABASE || 'ctronyt8_feedstream';
 
   const conn = await mysql.createConnection({ host, port, user, password });
   await conn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
