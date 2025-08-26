@@ -1,14 +1,23 @@
 {
-  "name": "elogbook",
+  "name": "feedstream",
   "private": true,
   "version": "2.0.2",
   "type": "module",
-  "os": ["win32", "linux", "darwin"],
-  "cpu": ["x64", "arm64"],
+  "proxy": "http://127.0.0.1:5000",
+  "os": [
+    "win32",
+    "linux",
+    "darwin"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
   "scripts": {
     "start": "vite",
     "dev": "vite",
-    "build": "tsc -b && cross-env NODE_ENV=production NPM_CONFIG_PLATFORM=linux vite build",
+    "build": "npm run typecheck && vite build --mode production",
+    "typecheck": "tsc --noEmit && tsc --noEmit --project tsconfig.node.json",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -25,9 +34,11 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@react-jvectormap/core": "^1.0.4",
     "@react-jvectormap/world": "^1.1.2",
+    "@supabase/supabase-js": "^2.56.0",
     "@types/react-datepicker": "^6.2.0",
     "@types/react-router-dom": "^5.3.3",
     "apexcharts": "^4.1.0",
+    "axios": "^1.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -55,7 +66,8 @@
   "devDependencies": {
     "@eslint/js": "^9.19.0",
     "@tailwindcss/postcss": "^4.0.8",
-    "@types/react": "^19.0.12",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.11",
     "@types/react-dom": "^19.0.4",
     "@types/recharts": "^2.0.0",
     "@vitejs/plugin-react": "^4.3.4",
@@ -71,10 +83,6 @@
     "vite-plugin-svgr": "^4.3.0"
   },
   "overrides": {
-    "rollup": {
-      "@rollup/rollup-linux-x64-gnu": "$rollup",
-      "@rollup/rollup-linux-x64-musl": "$rollup"
-    },
     "react-helmet-async": {
       "react": "^16.8.0 || ^17 || ^18 || ^19"
     },

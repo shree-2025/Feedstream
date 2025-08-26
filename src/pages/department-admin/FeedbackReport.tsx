@@ -1,53 +1,7 @@
 import React, { useState } from 'react';
-import { Download, Filter, Search, ChevronDown, User, Star } from 'lucide-react';
+import { Download, Filter, Search, ChevronDown, User, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import Button from '../../components/ui/button/Button';
 import { Modal } from '../../components/ui/modal';
-
-// Student feedback interface
-interface StudentFeedback {
-  id: number;
-  name: string;
-  email: string;
-  submitted: boolean;
-  rating?: number;
-  submissionDate?: string;
-  comments?: string;
-}
-
-// Feedback report interface
-interface FeedbackReport {
-  id: number;
-  staff: string;
-  subject: string;
-  date: string;
-  responses: number;
-  averageRating: number;
-  status: string;
-  totalStudents: number;
-}
-
-// Student feedback interface
-interface StudentFeedback {
-  id: number;
-  name: string;
-  email: string;
-  submitted: boolean;
-  rating?: number;
-  submissionDate?: string;
-  comments?: string;
-}
-
-// Feedback report interface
-interface FeedbackReport {
-  id: number;
-  staff: string;
-  subject: string;
-  date: string;
-  responses: number;
-  averageRating: number;
-  status: string;
-  totalStudents: number;
-}
 
 // Student feedback interface
 interface StudentFeedback {
@@ -150,34 +104,34 @@ const FeedbackReport: React.FC = () => {
   const currentStudents = studentFeedback.slice(indexOfFirstStudent, indexOfLastStudent);
 
   return (
-    <div className="space-y-6 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Feedback Reports</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              View and manage all feedback reports
-            </p>
+    <div className="p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+        <div className="p-6 space-y-4">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Feedback Reports</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                View and manage all feedback reports
+              </p>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button variant="outline" className="flex items-center gap-2">
+                <Filter size={16} />
+                <span>Filter</span>
+                <ChevronDown size={16} />
+              </Button>
+              <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+                <Download size={16} />
+                <span>Export</span>
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Button variant="outline" className="flex items-center gap-2">
-              <Filter size={16} />
-              <span>Filter</span>
-              <ChevronDown size={16} />
-            </Button>
-            <Button className="flex items-center gap-2">
-              <Download size={16} />
-              <span>Export</span>
-            </Button>
-          </div>
-        </div>
 
-        {/* Search and Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-4">
+          {/* Search */}
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
+              <Search className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
@@ -188,104 +142,80 @@ const FeedbackReport: React.FC = () => {
         </div>
 
         {/* Feedback Reports Table */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Staff
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Subject
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Responses
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Actions
-                  </th>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Staff
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Subject
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Date
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Responses
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {feedbackData.map((report) => (
+                <tr key={report.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{report.staff}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">{report.subject}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {new Date(report.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {report.responses} / {report.totalStudents} students
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button
+                      onClick={() => handleViewClick(report)}
+                      className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                    >
+                      View Details
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {feedbackData.map((report) => (
-                  <tr 
-                    key={report.id} 
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                    onClick={() => handleViewClick(report)}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">{report.staff}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-white">{report.subject}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {new Date(report.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {report.responses} / {report.totalStudents} students
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleViewClick(report);
-                        }}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                      >
-                        View Details
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-sm text-gray-700 dark:text-gray-300">
-            Showing <span className="font-medium">1</span> to{' '}
-            <span className="font-medium">
-              {Math.min(5, feedbackData.length)}
-            </span> of <span className="font-medium">{feedbackData.length}</span> results
-          </p>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div>
-          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-            <button
-              onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+
+        {/* Pagination */}
+        <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            Showing <span className="font-medium">{indexOfFirstStudent + 1}</span> to <span className="font-medium">{Math.min(indexOfLastStudent, totalStudents)}</span> of <span className="font-medium">{totalStudents}</span> results
+          </p>
+          <div className="flex items-center gap-2">
+            <button 
+              className="p-1 border rounded-md disabled:opacity-50" 
               disabled={currentPage === 1}
-              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
+              onClick={() => handlePageChange(currentPage - 1)}
             >
-              <span className="sr-only">Previous</span>
-              <ChevronDown className="h-5 w-5 transform rotate-90" />
+              <ChevronLeft size={20} />
             </button>
-            {Array.from({ length: totalFeedbackPages }, (_, i) => i + 1).map((pageNum) => (
-              <button
-                key={pageNum}
-                onClick={() => handlePageChange(pageNum)}
-                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                  currentPage === pageNum
-                    ? 'z-10 bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-600 dark:text-blue-300'
-                    : 'bg-white dark:bg-gray-700 border-gray-300 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
-                }`}
-              >
-                {pageNum}
-              </button>
-            ))}
-            <button
-              onClick={() => handlePageChange(Math.min(currentPage + 1, totalFeedbackPages))}
+            <span className="px-3 py-1 border rounded-md bg-blue-100 text-blue-600">{currentPage}</span>
+            <button 
+              className="p-1 border rounded-md disabled:opacity-50" 
               disabled={currentPage === totalFeedbackPages}
-              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
+              onClick={() => handlePageChange(currentPage + 1)}
             >
-              <span className="sr-only">Next</span>
-              <ChevronDown className="h-5 w-5 transform -rotate-90" />
+              <ChevronRight size={20} />
             </button>
-          </nav>
+          </div>
         </div>
       </div>
 

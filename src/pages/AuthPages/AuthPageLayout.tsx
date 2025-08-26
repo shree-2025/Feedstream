@@ -24,7 +24,7 @@ export default function AuthLayout({
                   width={231}
                   height={48}
                   src={theme === 'dark' ? '/images/logo/logo-dark.svg' : '/images/logo/logo.svg'}
-                  alt="E-Log Book"
+                  alt="Feedstream"
                   className="w-auto h-12"
                 />
               </Link>

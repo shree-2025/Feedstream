@@ -4,36 +4,24 @@ import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
-import Select from "../form/Select";
-import { useAuth, UserRole } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 
 export default function SignInForm() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { theme } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
-  const [role, setRole] = useState<UserRole | "">("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const roleOptions = [
-    { value: "MasterAdmin", label: "Master Admin" },
-    { value: "DepartmentAdmin", label: "Department Admin" },
-    { value: "Staff", label: "Staff" },
-    { value: "Student", label: "Student" },
-  ];
-
-  const handleRoleChange = (value: string) => {
-    setRole(value as UserRole);
-    setError(""); // Clear any previous errors
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!role || !email || !password) {
+
+    if (!email || !password) {
       setError("Please fill in all fields");
       return;
     }
@@ -42,18 +30,9 @@ export default function SignInForm() {
     setError("");
 
     try {
-      const success = await login(email, password, role);
+      const success = await login(email, password);
       if (success) {
-        // Navigate to appropriate dashboard based on role
-        const dashboardRoutes: Record<UserRole, string> = {
-          MasterAdmin: "/master-admin/dashboard",
-          OrganizationAdmin: "/organization-admin/dashboard",
-          DepartmentAdmin: "/department-admin/dashboard",
-          Staff: "/staff/dashboard",
-          Student: "/student/dashboard",
-          EndUser: "/end-user/dashboard"
-        };
-        navigate(dashboardRoutes[role]);
+        navigate('/department-admin/dashboard');
       } else {
         setError("Invalid credentials. Please try again.");
       }
@@ -66,6 +45,13 @@ export default function SignInForm() {
 
   return (
     <div className="w-full max-w-xs">
+      <div className="mb-4 text-center">
+        <img
+          src={theme === 'dark' ? '/images/logo/logo-dark.svg' : '/images/logo/logo.svg'}
+          alt="Feedstream Logo"
+          className="mx-auto h-12 w-auto"
+        />
+      </div>
       <div className="mb-3 text-center">
         <h1 className="font-semibold text-gray-800 dark:text-white" style={{ fontSize: '35px' }}>
           Sign In
@@ -83,19 +69,6 @@ export default function SignInForm() {
 
       <form className="space-y-3" onSubmit={handleSubmit}>
         <div className="space-y-3">
-          <div>
-            <Label>
-              Role <span className="text-error-500">*</span>
-            </Label>
-            <Select
-              options={roleOptions}
-              placeholder="Select a role"
-              onChange={handleRoleChange}
-              value={role || ''}
-              className="dark:bg-gray-900"
-            />
-          </div>
-
           <div>
             <Label>
               Email <span className="text-error-500">*</span>
@@ -162,14 +135,7 @@ export default function SignInForm() {
             </button>
           </div>
 
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md dark:bg-blue-900/20 dark:border-blue-800">
-            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-2">Demo Credentials:</p>
-            <p className="text-xs text-blue-600 dark:text-blue-400">
-              • Email: Any email (e.g., admin@test.com)<br/>
-              • Password: Any password (e.g., password123)<br/>
-              • Select your desired role to access that dashboard
-            </p>
-          </div>
+          {/* Demo credentials removed */}
         </div>
       </form>
 

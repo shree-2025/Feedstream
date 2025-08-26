@@ -71,12 +71,12 @@ const AppHeader: React.FC = () => {
             <img
               className="dark:hidden h-8 w-auto"
               src="/images/logo/logo.svg"
-              alt="E-Log Book"
+              alt="Feedstream"
             />
             <img
               className="hidden dark:block h-8 w-auto"
               src="/images/logo/logo-dark.svg"
-              alt="E-Log Book"
+              alt="Feedstream"
             />
           </Link>
 

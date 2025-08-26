@@ -3,8 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard as GridIcon,
   ChevronDownIcon,
-  Settings as SettingsIcon,
-  Briefcase as OrganizationIcon,
   Users as DepartmentIcon,
   FileText as LogIcon,
   Megaphone as MegaphoneIcon,
@@ -28,30 +26,6 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   {
-    name: "Master Admin Dashboard",
-    icon: <GridIcon />,
-    path: "/master-admin/dashboard",
-    roles: ["MasterAdmin"],
-  },
-  {
-    name: "Organization Mgmt",
-    icon: <OrganizationIcon />,
-    path: "/master-admin/organizations",
-    roles: ["MasterAdmin"],
-  },
-  {
-    name: "Org Admin Dashboard",
-    icon: <GridIcon />,
-    path: "/organization-admin/dashboard",
-    roles: ["OrganizationAdmin"],
-  },
-  {
-    name: "Department Mgmt",
-    icon: <DepartmentIcon />,
-    path: "/organization-admin/departments",
-    roles: ["OrganizationAdmin"],
-  },
-  {
     name: "Dashboard",
     icon: <GridIcon />,
     path: "/department-admin/dashboard",
@@ -63,14 +37,12 @@ const navItems: NavItem[] = [
     path: "/department-admin/subjects",
     roles: ["DepartmentAdmin"],
   },
- 
   {
     name: "Staff Management",
     icon: <DepartmentIcon />,
     path: "/department-admin/staff",
     roles: ["DepartmentAdmin"],
   },
- 
   {
     name: "Question Bank",
     icon: <FeedbackIcon />,
@@ -84,9 +56,9 @@ const navItems: NavItem[] = [
     roles: ["DepartmentAdmin"],
   },
   {
-    name: "Feedback Report",
+    name: "Feedback Responses",
     icon: <FileText />,
-    path: "/department-admin/feedback-report",
+    path: "/department-admin/feedback-responses",
     roles: ["DepartmentAdmin"],
   },
   {
@@ -101,66 +73,12 @@ const navItems: NavItem[] = [
     path: "/department-admin/announcements",
     roles: ["DepartmentAdmin"],
   },
-  {
-    name: "Staff Dashboard",
-    icon: <GridIcon />,
-    path: "/staff/dashboard",
-    roles: ["Staff"],
-  },
-  {
-    name: "Student Management",
-    icon: <DepartmentIcon />,
-    path: "/staff/student-management",
-    roles: ["Staff"],
-  },
-  {
-    name: "Student Logs",
-    icon: <LogIcon />,
-    path: "/staff/student-logs",
-    roles: ["Staff"],
-  },
-  {
-    name: "Submit Activity",
-    icon: <LogIcon />,
-    path: "/staff/submit-activity",
-    roles: ["Staff"],
-  },
-  {
-    name: "Announcements",
-    icon: <MegaphoneIcon />,
-    path: "/staff/announcements",
-    roles: ["Staff"],
-  },
-  {
-    name: "Student Dashboard",
-    icon: <GridIcon />,
-    path: "/student/dashboard",
-    roles: ["Student"],
-  },
-  {
-    name: "Submit Activity",
-    icon: <LogIcon />,
-    path: "/student/submit-activity",
-    roles: ["Student"],
-  },
-  {
-    name: "Manage Activities",
-    icon: <SettingsIcon />,
-    path: "/student/manage-activities",
-    roles: ["Student"],
-  },
-  // {
-  //   name: "Settings",
-  //   icon: <SettingsIcon />,
-  //   path: "/settings",
-  //   roles: ["MasterAdmin", "OrganizationAdmin", "DepartmentAdmin", "Staff", "Student"],
-  // },
 ];
 
 const AppSidebar: React.FC = () => {
   const { user } = useAuth();
   const { theme } = useTheme();
-  const userRole = user?.role || "Student"; // Default to Student if no user
+  const userRole = user?.role || "DepartmentAdmin"; // Default to DepartmentAdmin if no user
 
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
@@ -319,7 +237,7 @@ const AppSidebar: React.FC = () => {
           <Link to="/" className="flex items-center space-x-2">
             <img 
               src={theme === 'dark' ? '/images/logo/logo-dark.svg' : '/images/logo/logo.svg'} 
-              alt="E-Log Book" 
+              alt="Feedstream" 
               className="h-8 w-auto"
             />
           </Link>
@@ -329,11 +247,19 @@ const AppSidebar: React.FC = () => {
         {user && (isExpanded || isHovered || isMobileOpen) && (
           <div className="px-4 py-3 border-b dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-brand-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">
-                  {user.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
+              {user.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={user.name}
+                  className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+                />
+              ) : (
+                <div className="w-10 h-10 bg-brand-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-medium">
+                    {user.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {user.name}

@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { Plus, Search, Eye, FileText, Edit, Trash2, Download, X, Upload } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
+import toast from 'react-hot-toast';
+import { Plus, Search, Eye, FileText, Edit, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 interface Subject {
   id: number;
@@ -18,60 +21,24 @@ interface Subject {
 }
 
 const Subjects: React.FC = () => {
-  const [subjects, setSubjects] = useState<Subject[]>([
-    {
-      id: 1,
-      name: 'Computer Science Fundamentals',
-      code: 'CS101',
-      department: 'Computer Science',
-      credits: 3,
-      description: 'Introduction to Computer Science fundamentals including programming concepts, data structures, and algorithms',
-      semester: '1',
-      type: 'core',
-      instructor: 'Dr. John Smith',
-      duration: '16 weeks',
-      prerequisites: 'None',
-      objectives: 'Understand basic programming concepts, Learn problem-solving techniques, Master fundamental data structures',
-      createdAt: '2024-01-15',
-    },
-    {
-      id: 2,
-      name: 'Data Structures and Algorithms',
-      code: 'CS201',
-      department: 'Computer Science',
-      credits: 4,
-      description: 'Advanced data structures and algorithms including trees, graphs, sorting, and searching techniques',
-      semester: '3',
-      type: 'core',
-      instructor: 'Prof. Jane Wilson',
-      duration: '16 weeks',
-      prerequisites: 'CS101 - Computer Science Fundamentals',
-      objectives: 'Master advanced data structures, Implement efficient algorithms, Analyze time and space complexity',
-      createdAt: '2024-02-10',
-    },
-    {
-      id: 3,
-      name: 'Database Management Systems',
-      code: 'CS301',
-      department: 'Computer Science',
-      credits: 3,
-      description: 'Comprehensive study of database design, implementation, and management including SQL, normalization, and transaction processing',
-      semester: '5',
-      type: 'core',
-      instructor: 'Dr. Michael Brown',
-      duration: '16 weeks',
-      prerequisites: 'CS201 - Data Structures and Algorithms',
-      objectives: 'Design efficient database schemas, Master SQL queries, Understand transaction management',
-      createdAt: '2024-03-05',
-    }
-  ]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [total, setTotal] = useState<number>(0);
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(10);
+  const [order] = useState<'asc' | 'desc'>('asc');
+  const [loading, setLoading] = useState<boolean>(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState<string>('');
+  const [semesterFilter, setSemesterFilter] = useState<string>('');
+  const [typeFilter, setTypeFilter] = useState<string>('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
   const [newSubject, setNewSubject] = useState({
     name: '',
     code: '',
@@ -85,6 +52,38 @@ const Subjects: React.FC = () => {
     prerequisites: '',
     objectives: '',
   });
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / limit)), [total, limit]);
+
+  const fetchSubjects = async () => {
+    try {
+      setLoading(true);
+      const { data } = await axios.get('/api/subjects', {
+        params: { page, limit, search: searchTerm, order, department: departmentFilter, semester: semesterFilter, type: typeFilter }
+      });
+      setSubjects(data.items || []);
+      setTotal(data.total || 0);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to load subjects');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSubjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, limit, order, departmentFilter, semesterFilter, typeFilter]);
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPage(1);
+      fetchSubjects();
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
 
   const handleAddSubject = () => {
     setEditingSubject(null);
@@ -127,99 +126,66 @@ const Subjects: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSaveSubject = () => {
-    if (!newSubject.name || !newSubject.code) return;
-
-    const subjectData: Subject = {
-      id: editingSubject ? editingSubject.id : Date.now(),
-      ...newSubject,
-      createdAt: editingSubject ? editingSubject.createdAt : new Date().toISOString().split('T')[0]
-    };
-
-    if (editingSubject) {
-      setSubjects(subjects.map(s => s.id === editingSubject.id ? subjectData : s));
-    } else {
-      setSubjects([...subjects, subjectData]);
+  const handleSaveSubject = async () => {
+    if (!newSubject.name || !newSubject.code || !newSubject.department || !newSubject.semester) {
+      toast.error('Please fill required fields: name, code, department, semester');
+      return;
     }
 
-    setIsModalOpen(false);
-  };
-
-  const handleDeleteSubject = (id: number) => {
-    if (confirm('Are you sure you want to delete this subject?')) {
-      setSubjects(subjects.filter(s => s.id !== id));
-    }
-  };
-
-  const handleBulkUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type === 'text/csv') {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const csv = e.target?.result as string;
-        const lines = csv.split('\n');
-        const newSubjects: Subject[] = [];
-        
-        for (let i = 1; i < lines.length; i++) {
-          const [name, code, department, credits, description, semester, type, instructor, duration, prerequisites, objectives] = lines[i].split(',');
-          if (name && code) {
-            newSubjects.push({
-              id: Date.now() + i,
-              name: name.trim(),
-              code: code.trim(),
-              department: department?.trim() || '',
-              credits: parseInt(credits?.trim()) || 0,
-              description: description?.trim() || '',
-              semester: semester?.trim() || '',
-              type: type?.trim() || 'core',
-              instructor: instructor?.trim() || '',
-              duration: duration?.trim() || '',
-              prerequisites: prerequisites?.trim() || '',
-              objectives: objectives?.trim() || '',
-              createdAt: new Date().toISOString().split('T')[0]
-            });
-          }
+    try {
+      if (editingSubject) {
+        const { data } = await axios.put(`/api/subjects/${editingSubject.id}`, newSubject);
+        toast.success('Subject updated');
+        // Optimistic update
+        setSubjects(prev => prev.map(s => (s.id === editingSubject.id ? data : s)));
+      } else {
+        const { data } = await axios.post('/api/subjects', newSubject);
+        toast.success('Subject added');
+        // If on last page with space, add; otherwise refetch first page
+        if (subjects.length < limit && page === totalPages) {
+          setSubjects(prev => [...prev, data]);
+          setTotal(prev => prev + 1);
+        } else {
+          setPage(1);
+          await fetchSubjects();
         }
-        
-        setSubjects([...subjects, ...newSubjects]);
-        setIsBulkUploadOpen(false);
-      };
-      reader.readAsText(file);
+      }
+      setIsModalOpen(false);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to save subject';
+      toast.error(msg);
     }
   };
 
-  const downloadTemplate = () => {
-    const csvContent = "Name,Code,Department,Credits,Description,Semester,Type,Instructor,Duration,Prerequisites,Objectives\n" +
-      "Data Structures,CS201,Computer Science,3,Advanced programming concepts,Fall 2024,core,Dr. Jane Doe,16 weeks,None,Understand data structures, Learn problem-solving techniques, Master fundamental algorithms\n" +
-      "Linear Algebra,MATH201,Mathematics,4,Vector spaces and matrices,Spring 2024,core,Dr. John Smith,16 weeks,None,Understand vector spaces, Learn matrix operations, Master linear transformations";
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'subjects_template.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const requestDeleteSubject = (id: number) => {
+    setConfirmMessage('Are you sure you want to delete this subject? This action cannot be undone.');
+    setConfirmAction(() => async () => {
+      try {
+        await axios.delete(`/api/subjects/${id}`);
+        toast.success('Subject deleted');
+        if (subjects.length === 1 && page > 1) {
+          setPage(p => p - 1);
+        } else {
+          await fetchSubjects();
+        }
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || 'Failed to delete subject');
+      } finally {
+        setConfirmOpen(false);
+      }
+    });
+    setConfirmOpen(true);
   };
 
-  const filteredSubjects = subjects.filter(subject =>
-    subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    subject.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    subject.department.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  
+
+  const filteredSubjects = subjects; // server-side filtering
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Subjects Management</h1>
         <div className="flex gap-2">
-          <button
-            onClick={() => setIsBulkUploadOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
-          >
-            <Upload size={16} />
-            Bulk Upload
-          </button>
           <button
             onClick={handleAddSubject}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
@@ -228,6 +194,17 @@ const Subjects: React.FC = () => {
             Add Subject
           </button>
         </div>
+
+      {/* Global Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Confirm Deletion"
+        message={confirmMessage}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={() => confirmAction && confirmAction()}
+        onCancel={() => setConfirmOpen(false)}
+      />
       </div>
 
       <div className="relative">
@@ -239,6 +216,59 @@ const Subjects: React.FC = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
         />
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <select
+          value={departmentFilter}
+          onChange={(e) => { setDepartmentFilter(e.target.value); setPage(1); }}
+          className="px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
+        >
+          <option value="">All Departments</option>
+          <option value="Computer Science">Computer Science</option>
+          <option value="Information Technology">Information Technology</option>
+          <option value="Electronics">Electronics</option>
+          <option value="Mechanical">Mechanical</option>
+          <option value="Civil">Civil</option>
+          <option value="Mathematics">Mathematics</option>
+          <option value="Physics">Physics</option>
+          <option value="Chemistry">Chemistry</option>
+          <option value="English">English</option>
+          <option value="Management">Management</option>
+        </select>
+        <select
+          value={semesterFilter}
+          onChange={(e) => { setSemesterFilter(e.target.value); setPage(1); }}
+          className="px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
+        >
+          <option value="">All Semesters</option>
+          <option value="1">Semester 1</option>
+          <option value="2">Semester 2</option>
+          <option value="3">Semester 3</option>
+          <option value="4">Semester 4</option>
+          <option value="5">Semester 5</option>
+          <option value="6">Semester 6</option>
+          <option value="7">Semester 7</option>
+          <option value="8">Semester 8</option>
+        </select>
+        <select
+          value={typeFilter}
+          onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
+          className="px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
+        >
+          <option value="">All Types</option>
+          <option value="core">Core</option>
+          <option value="elective">Elective</option>
+          <option value="lab">Laboratory</option>
+          <option value="project">Project</option>
+        </select>
+        <button
+          onClick={() => { setDepartmentFilter(''); setSemesterFilter(''); setTypeFilter(''); setPage(1); }}
+          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+        >
+          Clear Filters
+        </button>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
@@ -255,7 +285,15 @@ const Subjects: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
-              {filteredSubjects.map((subject) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Loading...</td>
+                </tr>
+              ) : filteredSubjects.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">No subjects found</td>
+                </tr>
+              ) : filteredSubjects.map((subject) => (
                 <tr key={subject.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900 dark:text-white">{subject.name}</div>
@@ -288,7 +326,7 @@ const Subjects: React.FC = () => {
                         <Edit size={16} />
                       </button>
                       <button
-                        onClick={() => handleDeleteSubject(subject.id)}
+                        onClick={() => requestDeleteSubject(subject.id)}
                         className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                         title="Delete Subject"
                       >
@@ -300,6 +338,68 @@ const Subjects: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Pagination Footer */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          Showing {subjects.length > 0 ? (page - 1) * limit + 1 : 0}-{(page - 1) * limit + subjects.length} of {total}
+        </div>
+        <div className="flex items-center gap-3">
+          <select
+            value={limit}
+            onChange={(e) => { setLimit(parseInt(e.target.value, 10)); setPage(1); }}
+            className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white"
+          >
+            <option value={5}>5 / page</option>
+            <option value={10}>10 / page</option>
+            <option value={20}>20 / page</option>
+            <option value={50}>50 / page</option>
+          </select>
+          <div className="flex items-center gap-1">
+            <button
+              className="p-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              aria-label="Previous"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            {(() => {
+              const btns = [] as React.ReactNode[];
+              const maxButtons = 5;
+              let start = Math.max(1, page - 2);
+              let end = Math.min(totalPages, start + maxButtons - 1);
+              if (end - start + 1 < maxButtons) {
+                start = Math.max(1, end - maxButtons + 1);
+              }
+              for (let p = start; p <= end; p++) {
+                btns.push(
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`px-3 py-1 rounded border text-sm ${
+                      p === page
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                );
+              }
+              return btns;
+            })()}
+            <button
+              className="p-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              aria-label="Next"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -438,78 +538,7 @@ const Subjects: React.FC = () => {
         </div>
       )}
 
-      {/* Bulk Upload Modal */}
-      {isBulkUploadOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Bulk Upload Subjects</h2>
-              <button
-                onClick={() => setIsBulkUploadOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="space-y-6">
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">CSV Format Requirements</h3>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
-                  Your CSV file should contain the following columns:
-                </p>
-                <code className="text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-1 rounded block">
-                  Name, Code, Department, Credits, Semester, Type, Description
-                </code>
-              </div>
-              
-              <div>
-                <button
-                  onClick={downloadTemplate}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/30 transition-colors"
-                >
-                  <Download size={16} />
-                  Download CSV Template
-                </button>
-              </div>
-              
-              <form className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Upload CSV File *</label>
-                  <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-blue-400 dark:hover:border-blue-500 transition-colors">
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={handleBulkUpload}
-                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-300 dark:file:hover:bg-blue-800"
-                      required
-                    />
-                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                      Select a CSV file or drag and drop it here
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-600">
-                  <button
-                    type="button"
-                    onClick={() => setIsBulkUploadOpen(false)}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 order-2 sm:order-1"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 order-1 sm:order-2"
-                  >
-                    Upload & Process
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      
 
       {/* View Subject Details Modal */}
       {isViewModalOpen && selectedSubject && (

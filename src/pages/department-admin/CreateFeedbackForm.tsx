@@ -1,37 +1,159 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 
-const teachers = [
-  { id: 1, name: 'Dr. Emily Carter' },
-  { id: 2, name: 'Mr. John Doe' },
-  { id: 3, name: 'Ms. Jane Smith' },
-];
-
-const subjects = [
-  { id: 1, name: 'Computer Science' },
-  { id: 2, name: 'Mathematics' },
-  { id: 3, name: 'Physics' },
-];
-
-const questions = [
-  { id: 1, text: 'How would you rate the clarity of the lectures?' },
-  { id: 2, text: 'Was the course material relevant and useful?' },
-  { id: 3, text: 'How helpful were the assignments in understanding the subject?' },
-  { id: 4, text: 'Rate the availability of the teacher for doubts and discussions.' },
-];
+type Teacher = { id: number; name: string; department?: string | null; subjects?: number[] };
+type Subject = { id: number; name: string; department?: string | null; semester?: string | number | null };
+type Question = { id: number; text: string };
 
 const CreateFeedbackForm: React.FC = () => {
+  const { user } = useAuth();
+  const storageKey = useMemo(() => `fb_defaults_${user?._id || 'anon'}`, [user?._id]);
+
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [selectedTeacher, setSelectedTeacher] = useState<number | ''>('');
   const [selectedSubject, setSelectedSubject] = useState<number | ''>('');
   const [selectedQuestions, setSelectedQuestions] = useState<number[]>([]);
+  const [selectedSemester, setSelectedSemester] = useState<number | ''>('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const handleGenerateLink = () => {
-    if (selectedTeacher && selectedSubject && selectedQuestions.length > 0 && startDate && endDate) {
-      const formLink = `https://example.com/feedback?teacher=${selectedTeacher}&subject=${selectedSubject}&questions=${selectedQuestions.join(',')}&start=${startDate}&end=${endDate}`;
-      alert(`Feedback form link generated:\n${formLink}`);
-    } else {
+  // search inputs
+  const [teacherSearch, setTeacherSearch] = useState('');
+  const [subjectSearch, setSubjectSearch] = useState('');
+  const [questionSearch, setQuestionSearch] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        setLoading(true);
+        setError(null);
+        const [staffRes, subjRes, quesRes] = await Promise.all([
+          axios.get('/api/staff', { params: { page: 1, limit: 1000 } }),
+          axios.get('/api/subjects', { params: { page: 1, limit: 1000 } }),
+          axios.get('/api/questions', { params: { page: 1, limit: 1000 } }),
+        ]);
+        if (!mounted) return;
+        setTeachers((staffRes.data?.items || []).map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          department: s.department || null,
+          subjects: Array.isArray(s.subjects)
+            ? s.subjects.map((x: any) => Number(x)).filter((n: any) => Number.isFinite(n))
+            : [],
+        })));
+        setSubjects((subjRes.data?.items || []).map((s: any) => ({ id: s.id, name: s.name, department: s.department || null, semester: s.semester ?? null })));
+        setQuestions((quesRes.data?.items || []).map((q: any) => ({ id: q.id, text: q.text })));
+
+        // hydrate defaults
+        try {
+          const saved = localStorage.getItem(storageKey);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed.selectedTeacher) setSelectedTeacher(parsed.selectedTeacher);
+            if (parsed.selectedSubject) setSelectedSubject(parsed.selectedSubject);
+            if (Array.isArray(parsed.selectedQuestions)) setSelectedQuestions(parsed.selectedQuestions);
+            if (parsed.selectedSemester !== undefined) setSelectedSemester(parsed.selectedSemester);
+            if (parsed.startDate) setStartDate(parsed.startDate);
+            if (parsed.endDate) setEndDate(parsed.endDate);
+          }
+        } catch {}
+      } catch (e: any) {
+        if (!mounted) return;
+        console.error('CreateFeedbackForm load error', e);
+        setError(e?.response?.data?.message || 'Failed to load data');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
+    return () => { mounted = false; };
+  }, []);
+
+  // persist defaults
+  useEffect(() => {
+    try {
+      const payload = { selectedTeacher, selectedSubject, selectedQuestions, selectedSemester, startDate, endDate };
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+    } catch {}
+  }, [selectedTeacher, selectedSubject, selectedQuestions, selectedSemester, startDate, endDate, storageKey]);
+
+  // Derived: selected teacher's department
+  const selectedTeacherDept = useMemo(() => {
+    const t = teachers.find(t => t.id === selectedTeacher);
+    return t?.department || null;
+  }, [teachers, selectedTeacher]);
+
+  // Filter subjects by selected teacher assignment, optional semester, and search
+  const filteredSubjects = useMemo(() => {
+    let list = subjects;
+    // If a teacher is selected and they have assigned subjects, restrict to those IDs
+    const teacher = teachers.find(t => t.id === selectedTeacher);
+    if (teacher && Array.isArray(teacher.subjects) && teacher.subjects.length > 0) {
+      const allowed = new Set(teacher.subjects);
+      list = list.filter(s => allowed.has(s.id as any));
+    } else if (selectedTeacher) {
+      // If a teacher selected but no subjects assigned, show empty list
+      list = [];
+    }
+    // Optional semester filter (1..8)
+    if (selectedSemester) {
+      list = list.filter(s => String(s.semester || '').trim() === String(selectedSemester));
+    }
+    if (subjectSearch.trim()) list = list.filter(s => s.name.toLowerCase().includes(subjectSearch.toLowerCase()));
+    return list;
+  }, [subjects, teachers, selectedTeacher, selectedSemester, subjectSearch]);
+
+  // Filter teachers and questions by search
+  const filteredTeachers = useMemo(() => {
+    let list = teachers;
+    if (teacherSearch.trim()) list = list.filter(t => t.name.toLowerCase().includes(teacherSearch.toLowerCase()) || (t.department || '').toLowerCase().includes(teacherSearch.toLowerCase()));
+    return list;
+  }, [teachers, teacherSearch]);
+
+  const filteredQuestions = useMemo(() => {
+    let list = questions;
+    if (questionSearch.trim()) list = list.filter(q => q.text.toLowerCase().includes(questionSearch.toLowerCase()));
+    return list;
+  }, [questions, questionSearch]);
+
+  // Ensure subject remains valid when teacher changes
+  useEffect(() => {
+    if (!selectedSubject) return;
+    if (!filteredSubjects.some(s => s.id === selectedSubject)) setSelectedSubject('');
+  }, [filteredSubjects, selectedSubject]);
+
+  const handleGenerateLink = async () => {
+    if (!(selectedTeacher && selectedSubject && selectedQuestions.length > 0 && startDate && endDate)) {
       alert('Please fill out all fields before generating the link.');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      setGeneratedUrl(null);
+      const res = await axios.post('/api/feedback-forms', {
+        teacherId: selectedTeacher,
+        subjectId: selectedSubject,
+        questionIds: selectedQuestions,
+        startDate,
+        endDate,
+      });
+      const slug = res.data?.slug;
+      const url = `${window.location.origin}/feedback?slug=${encodeURIComponent(slug)}`;
+      setGeneratedUrl(url);
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Failed to create feedback form');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -39,31 +161,86 @@ const CreateFeedbackForm: React.FC = () => {
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Create Feedback Form</h1>
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 space-y-6">
-        
+        {loading && (
+          <div className="text-sm text-gray-600 dark:text-gray-300">Loading options...</div>
+        )}
+        {error && (
+          <div className="text-sm text-red-600">{error}</div>
+        )}
+
         <div>
           <label htmlFor="teacher" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Teacher</label>
-          <select id="teacher" value={selectedTeacher} onChange={(e) => setSelectedTeacher(Number(e.target.value))} className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+          <input
+            type="text"
+            value={teacherSearch}
+            onChange={(e) => setTeacherSearch(e.target.value)}
+            placeholder="Search teachers or department..."
+            className="mb-2 w-full p-2 border border-gray-200 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
+            disabled={loading || !!error}
+          />
+          <select id="teacher" value={selectedTeacher} onChange={(e) => setSelectedTeacher(Number(e.target.value))} className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" disabled={loading || !!error}>
             <option value="" disabled>Choose a teacher</option>
-            {teachers.map(teacher => (
+            {filteredTeachers.map(teacher => (
               <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+            ))}
+          </select>
+          {!loading && !error && filteredTeachers.length === 0 && (
+            <div className="mt-2 text-xs text-orange-600">No staff found. Please add staff first.</div>
+          )}
+          {selectedTeacherDept && (
+            <div className="mt-1 text-xs text-gray-500">Department: {selectedTeacherDept}</div>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="semester" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Semester</label>
+          <select
+            id="semester"
+            value={selectedSemester}
+            onChange={(e) => setSelectedSemester(e.target.value ? Number(e.target.value) : '')}
+            className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            disabled={loading || !!error}
+          >
+            <option value="">All semesters</option>
+            {[1,2,3,4,5,6,7,8].map(n => (
+              <option key={n} value={n}>{n}</option>
             ))}
           </select>
         </div>
 
         <div>
           <label htmlFor="subject" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Subject</label>
-          <select id="subject" value={selectedSubject} onChange={(e) => setSelectedSubject(Number(e.target.value))} className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+          <input
+            type="text"
+            value={subjectSearch}
+            onChange={(e) => setSubjectSearch(e.target.value)}
+            placeholder={selectedTeacherDept ? `Search subjects in ${selectedTeacherDept}...` : 'Search subjects...'}
+            className="mb-2 w-full p-2 border border-gray-200 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
+            disabled={loading || !!error}
+          />
+          <select id="subject" value={selectedSubject} onChange={(e) => setSelectedSubject(Number(e.target.value))} className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" disabled={loading || !!error}>
             <option value="" disabled>Choose a subject</option>
-            {subjects.map(subject => (
+            {filteredSubjects.map(subject => (
               <option key={subject.id} value={subject.id}>{subject.name}</option>
             ))}
           </select>
+          {!loading && !error && filteredSubjects.length === 0 && (
+            <div className="mt-2 text-xs text-orange-600">No subjects found{selectedTeacher ? ' for the selected staff' : ''}{selectedSemester ? ` in semester ${selectedSemester}` : ''}.</div>
+          )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Questions</label>
+          <input
+            type="text"
+            value={questionSearch}
+            onChange={(e) => setQuestionSearch(e.target.value)}
+            placeholder="Search questions..."
+            className="mb-2 w-full p-2 border border-gray-200 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
+            disabled={loading || !!error}
+          />
           <div className="space-y-2">
-            {questions.map(q => (
+            {filteredQuestions.map(q => (
               <div key={q.id} className="flex items-center">
                 <input 
                   type="checkbox" 
@@ -78,11 +255,15 @@ const CreateFeedbackForm: React.FC = () => {
                     }
                   }}
                   className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  disabled={loading || !!error}
                 />
                 <label htmlFor={`q-${q.id}`} className="ml-3 text-sm text-gray-700 dark:text-gray-300">{q.text}</label>
               </div>
             ))}
           </div>
+          {!loading && !error && filteredQuestions.length === 0 && (
+            <div className="mt-2 text-xs text-orange-600">No questions found in the Question Bank.</div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -96,8 +277,25 @@ const CreateFeedbackForm: React.FC = () => {
           </div>
         </div>
 
-        <div className="text-right">
-          <button onClick={handleGenerateLink} className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">Generate Link</button>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          {generatedUrl && (
+            <div className="flex-1 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded p-2 text-sm text-gray-800 dark:text-gray-200 break-all">
+              {generatedUrl}
+            </div>
+          )}
+          <div className="text-right">
+            <button onClick={handleGenerateLink} disabled={loading || !!error || submitting} className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-60">
+              {submitting ? 'Generating…' : 'Generate Link'}
+            </button>
+            {generatedUrl && (
+              <button
+                onClick={() => navigator.clipboard.writeText(generatedUrl)}
+                className="ml-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100"
+              >
+                Copy
+              </button>
+            )}
+          </div>
         </div>
 
       </div>

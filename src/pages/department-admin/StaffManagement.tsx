@@ -1,8 +1,11 @@
-import React, { useState, useMemo } from 'react';
-import { UserPlus, Upload, LayoutGrid, List, Search, Eye, FileText, Edit, Trash2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import toast from 'react-hot-toast';
+import { UserPlus, Upload, LayoutGrid, List, Search, Eye, FileText, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import Button from '../../components/ui/button/Button';
 import { useModal } from '../../hooks/useModal';
 import { Modal } from '../../components/ui/modal';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 const StaffManagement: React.FC = () => {
   const { isOpen: isAddStaffModalOpen, openModal: openAddStaffModal, closeModal: closeAddStaffModal } = useModal();
@@ -13,14 +16,29 @@ const StaffManagement: React.FC = () => {
   const [selectedStaff, setSelectedStaff] = useState<any>(null);
   const [selectedStaffForSubjects, setSelectedStaffForSubjects] = useState<any>(null);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [editingStaff, setEditingStaff] = useState<any | null>(null);
+  const [formKey, setFormKey] = useState<number>(0); // force re-mount form to apply defaultValue
+  // Read formKey to satisfy TS "unused" heuristic in some setups
+  void formKey;
 
-  const availableSubjects = [
-    'Data Structures', 'Algorithms', 'Database Systems', 'Computer Networks',
-    'Operating Systems', 'Software Engineering', 'Machine Learning', 'Artificial Intelligence',
-    'Web Development', 'Mobile Development', 'Digital Electronics', 'VLSI Design',
-    'Signal Processing', 'Communication Systems', 'Mathematics', 'Physics',
-    'Chemistry', 'English', 'Management', 'Data Science', 'Network Security'
-  ];
+  // Dynamic subjects loaded from Subject Management (DB)
+  const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
+
+  const loadAvailableSubjects = async () => {
+    try {
+      const { data } = await axios.get('/api/subjects', {
+        params: { page: 1, limit: 1000, order: 'asc' },
+      });
+      const names: string[] = (data?.items || []).map((s: any) => s.name).filter(Boolean);
+      setAvailableSubjects(names);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to load subjects');
+    }
+  };
+
+  useEffect(() => {
+    loadAvailableSubjects();
+  }, []);
 
   const handleSubjectToggle = (subject: string) => {
     setSelectedSubjects(prev => 
@@ -45,95 +63,104 @@ const StaffManagement: React.FC = () => {
     openSubjectsModal();
   };
   const [sortOrder, setSortOrder] = useState<string>('asc');
+  const [sortBy, setSortBy] = useState<string>('name');
   const [searchTerm, setSearchTerm] = useState('');
+  const [staff, setStaff] = useState<any[]>([]);
+  const [loadingList, setLoadingList] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const staff = [
-    { 
-      id: 1,
-      name: 'John Doe', 
-      email: 'john.doe@example.com', 
-      role: 'Lecturer', 
-      status: 'Active',
-      department: 'Computer Science',
-      subjects: ['Data Structures', 'Algorithms'],
-      phone: '+1 (555) 123-4567',
-      joinDate: '2020-08-15',
-      address: '123 Main St, City, State 12345',
-      qualification: 'M.Tech Computer Science',
-      experience: '5 years',
-      specialization: 'Data Structures, Algorithms'
-    },
-    { 
-      id: 2,
-      name: 'Jane Smith', 
-      email: 'jane.smith@example.com', 
-      role: 'Assistant Professor', 
-      status: 'Active',
-      department: 'Information Technology',
-      subjects: ['Machine Learning', 'Artificial Intelligence', 'Data Science'],
-      phone: '+1 (555) 234-5678',
-      joinDate: '2019-01-10',
-      address: '456 Oak Ave, City, State 12345',
-      qualification: 'Ph.D Information Technology',
-      experience: '8 years',
-      specialization: 'Machine Learning, AI'
-    },
-    { 
-      id: 3,
-      name: 'Peter Jones', 
-      email: 'peter.jones@example.com', 
-      role: 'Lab Assistant', 
-      status: 'Inactive',
-      department: 'Computer Science',
-      subjects: ['Computer Networks', 'Network Security'],
-      phone: '+1 (555) 345-6789',
-      joinDate: '2021-03-22',
-      address: '789 Pine St, City, State 12345',
-      qualification: 'B.Tech Computer Science',
-      experience: '2 years',
-      specialization: 'Hardware, Networking'
-    },
-    { 
-      id: 4,
-      name: 'Alice Williams', 
-      email: 'alice.w@example.com', 
-      role: 'Lecturer', 
-      status: 'Active',
-      department: 'Electronics',
-      subjects: ['Digital Electronics', 'VLSI Design'],
-      phone: '+1 (555) 456-7890',
-      joinDate: '2020-11-05',
-      address: '321 Elm St, City, State 12345',
-      qualification: 'M.Tech Electronics',
-      experience: '4 years',
-      specialization: 'Digital Electronics, VLSI'
-    },
-    { 
-      id: 5,
-      name: 'Bob Brown', 
-      email: 'bob.b@example.com', 
-      role: 'Professor', 
-      status: 'Active',
-      department: 'Computer Science',
-      subjects: ['Database Systems', 'Software Engineering', 'Web Development'],
-      phone: '+1 (555) 567-8901',
-      joinDate: '2015-07-01',
-      address: '654 Maple Ave, City, State 12345',
-      qualification: 'Ph.D Computer Science',
-      experience: '12 years',
-      specialization: 'Software Engineering, Database Systems'
-    },
-  ];
+  // Filters + meta options
+  const [departmentFilter, setDepartmentFilter] = useState<string>('');
+  const [roleFilter, setRoleFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [deptOptions, setDeptOptions] = useState<string[]>([]);
+  const [roleOptions, setRoleOptions] = useState<string[]>([]);
+  const [statusOptions, setStatusOptions] = useState<string[]>([]);
+  // Bulk upload state
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
-  const filteredAndSortedStaff = useMemo(() => {
-    return staff
-      .filter(member => member.name.toLowerCase().includes(searchTerm.toLowerCase()))
-      .sort((a, b) => {
-        if (a.name < b.name) return sortOrder === 'asc' ? -1 : 1;
-        if (a.name > b.name) return sortOrder === 'asc' ? 1 : -1;
-        return 0;
-      });
-  }, [staff, searchTerm, sortOrder]);
+  const fetchStaff = async (opts?: { search?: string; order?: string; page?: number; limit?: number; sortBy?: string; department?: string; role?: string; status?: string }) => {
+    setLoadingList(true);
+    try {
+      const search = opts?.search ?? searchTerm;
+      const order = opts?.order ?? sortOrder;
+      const sortByParam = opts?.sortBy ?? sortBy;
+      const page = opts?.page ?? currentPage;
+      const limit = opts?.limit ?? pageSize;
+      const department = opts?.department ?? departmentFilter;
+      const role = opts?.role ?? roleFilter;
+      const status = opts?.status ?? statusFilter;
+      const { data } = await axios.get('/api/staff', { params: { search, order, sortBy: sortByParam, page, limit, department, role, status } });
+      setStaff(data.items || []);
+      setTotal(data.total || 0);
+    } catch (e) {
+      toast.error('Failed to load staff');
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStaff();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortOrder, sortBy, currentPage, pageSize, departmentFilter, roleFilter, statusFilter]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setCurrentPage(1);
+      fetchStaff({ search: searchTerm, page: 1, limit: pageSize });
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
+
+  // Load filter options dynamically
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await axios.get('/api/staff/meta');
+        setDeptOptions(data?.departments || []);
+        setRoleOptions(data?.roles || []);
+        setStatusOptions(data?.statuses || []);
+      } catch (e) {
+        // Non-blocking
+      }
+    })();
+  }, []);
+
+  const filteredAndSortedStaff = staff; // already filtered/sorted by server
+
+  const onEditStaff = (member: any) => {
+    setEditingStaff(member);
+    setSelectedSubjects(member.subjects || []);
+    setFormKey(prev => prev + 1);
+    openAddStaffModal();
+  };
+
+  // Confirm dialog state for deletions
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+
+  const requestDeleteStaff = (member: any) => {
+    setConfirmMessage(`Delete staff ${member.name}? This action cannot be undone.`);
+    setConfirmAction(() => async () => {
+      try {
+        await axios.delete(`/api/staff/${member.id}`);
+        if (staff.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
+        else fetchStaff();
+        toast.success('Staff deleted');
+      } catch (e) {
+        toast.error('Failed to delete staff');
+      } finally {
+        setConfirmOpen(false);
+      }
+    });
+    setConfirmOpen(true);
+  };
 
   const renderListView = () => (
     <div className="bg-white dark:bg-gray-800 p-2 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
@@ -165,6 +192,17 @@ const StaffManagement: React.FC = () => {
                       <Eye size={16} />
                     </button>
                   </div>
+
+      {/* Global Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Confirm Deletion"
+        message={confirmMessage}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={() => confirmAction && confirmAction()}
+        onCancel={() => setConfirmOpen(false)}
+      />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${member.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -187,12 +225,14 @@ const StaffManagement: React.FC = () => {
                       <FileText size={16} />
                     </button>
                     <button
+                      onClick={() => onEditStaff(member)}
                       className="p-2 text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded"
                       title="Edit"
                     >
                       <Edit size={16} />
                     </button>
                     <button
+                      onClick={() => requestDeleteStaff(member)}
                       className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                       title="Delete"
                     >
@@ -218,7 +258,7 @@ const StaffManagement: React.FC = () => {
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">{member.name}</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{member.role}</p>
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {member.subjects.map((subject, idx) => (
+                  {member.subjects.map((subject: string, idx: number) => (
                     <span key={idx} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">
                       {subject}
                     </span>
@@ -246,12 +286,14 @@ const StaffManagement: React.FC = () => {
               <FileText size={16} />
             </button>
             <button
+              onClick={() => onEditStaff(member)}
               className="p-2 text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded"
               title="Edit"
             >
               <Edit size={16} />
             </button>
             <button
+              onClick={() => requestDeleteStaff(member)}
               className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
               title="Delete"
             >
@@ -266,7 +308,43 @@ const StaffManagement: React.FC = () => {
   return (
     <div className="p-6 space-y-6">
       <Modal isOpen={isAddStaffModalOpen} onClose={closeAddStaffModal} title="Add New Staff">
-        <form className="space-y-5">
+        <form
+          key={formKey}
+          className="space-y-5"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const form = e.target as HTMLFormElement;
+            const formData = new FormData(form);
+            const payload = {
+              name: String(formData.get('name') || ''),
+              email: String(formData.get('email') || ''),
+              role: String(formData.get('role') || ''),
+              department: String(formData.get('department') || ''),
+              subjects: selectedSubjects,
+              status: 'Active',
+            };
+            if (!payload.name) { toast.error('Name is required'); return; }
+            if (!payload.email) { toast.error('Email is required'); return; }
+            if (!payload.role) { toast.error('Role is required'); return; }
+            if (selectedSubjects.length === 0) { toast.error('Please select at least one subject'); return; }
+            try {
+              if (editingStaff) {
+                await axios.put(`/api/staff/${editingStaff.id}`, payload);
+                toast.success('Staff updated');
+              } else {
+                await axios.post('/api/staff', payload);
+                toast.success('Staff added');
+              }
+              setSelectedSubjects([]);
+              setEditingStaff(null);
+              closeAddStaffModal();
+              fetchStaff();
+            } catch (err: any) {
+              if (err?.response?.status === 409) toast.error('Email already exists');
+              else toast.error('Failed to save staff');
+            }
+          }}
+        >
           <div className="grid grid-cols-1 gap-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Full Name *</label>
@@ -274,6 +352,8 @@ const StaffManagement: React.FC = () => {
                 type="text" 
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400" 
                 placeholder="Enter full name"
+                name="name"
+                defaultValue={editingStaff?.name || ''}
                 required
               />
             </div>
@@ -283,17 +363,19 @@ const StaffManagement: React.FC = () => {
                 type="email" 
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400" 
                 placeholder="Enter email address"
+                name="email"
+                defaultValue={editingStaff?.email || ''}
                 required
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Role *</label>
-              <select className="w-full px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+              <select name="role" defaultValue={editingStaff?.role || ''} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
                 <option value="">Select a role</option>
-                <option value="lecturer">Lecturer</option>
-                <option value="assistant-professor">Assistant Professor</option>
-                <option value="lab-assistant">Lab Assistant</option>
-                <option value="professor">Professor</option>
+                <option value="Lecturer">Lecturer</option>
+                <option value="Assistant Professor">Assistant Professor</option>
+                <option value="Lab Assistant">Lab Assistant</option>
+                <option value="Professor">Professor</option>
               </select>
             </div>
             <div>
@@ -302,6 +384,8 @@ const StaffManagement: React.FC = () => {
                 type="text" 
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400" 
                 placeholder="Enter department"
+                name="department"
+                defaultValue={editingStaff?.department || ''}
               />
             </div>
             <div>
@@ -311,7 +395,7 @@ const StaffManagement: React.FC = () => {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Selected subjects ({selectedSubjects.length}):</p>
                   <div className="flex flex-wrap gap-1 min-h-[24px]">
                     {selectedSubjects.length > 0 ? (
-                      selectedSubjects.map((subject, idx) => (
+                      selectedSubjects.map((subject: string, idx: number) => (
                         <span key={idx} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full flex items-center gap-1">
                           {subject}
                           <button
@@ -331,7 +415,7 @@ const StaffManagement: React.FC = () => {
                 <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Available subjects:</p>
                   <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
-                    {availableSubjects.map((subject) => (
+                    {availableSubjects.map((subject: string) => (
                       <label key={subject} className="flex items-center space-x-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 p-1 rounded">
                         <input
                           type="checkbox"
@@ -351,8 +435,18 @@ const StaffManagement: React.FC = () => {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-600">
-            <Button variant="outline" onClick={handleAddStaffModalClose} className="order-2 sm:order-1">Cancel</Button>
-            <Button type="submit" className="order-1 sm:order-2">Add Staff</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedSubjects([]);
+                setEditingStaff(null);
+                handleAddStaffModalClose();
+              }}
+              className="order-2 sm:order-1"
+            >
+              Cancel
+            </Button>
+            <Button type="submit" className="order-1 sm:order-2">{editingStaff ? 'Save Changes' : 'Add Staff'}</Button>
           </div>
         </form>
       </Modal>
@@ -365,17 +459,98 @@ const StaffManagement: React.FC = () => {
               Your CSV file should contain the following columns:
             </p>
             <code className="text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
-              Name, Email, Role, Department, Subjects (comma-separated), Phone (optional)
+              name, email, role, department, subjects (JSON array), status
             </code>
+            <div className="mt-2">
+              <a
+                href="/api/staff/template.csv"
+                className="text-xs text-blue-700 dark:text-blue-300 hover:underline"
+                target="_blank" rel="noreferrer"
+              >
+                Download CSV template
+              </a>
+            </div>
           </div>
           
-          <form className="space-y-5">
+          <form
+            className="space-y-5"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!bulkFile) { toast.error('Please choose a CSV file'); return; }
+              setBulkLoading(true);
+              try {
+                const csv = await bulkFile.text();
+                const items: any[] = [];
+                const lines = csv.split(/\r?\n/).filter(l => l.trim().length > 0);
+                if (lines.length <= 1) { throw new Error('CSV has no data rows'); }
+                // Parse header to map indices
+                const header = lines[0].split(',').map(h => h.trim().replace(/^\ufeff/, '').toLowerCase());
+                const idx = (name: string) => header.indexOf(name);
+                const iName = idx('name');
+                const iEmail = idx('email');
+                const iRole = idx('role');
+                const iDept = idx('department');
+                const iSubjects = idx('subjects');
+                const iStatus = idx('status');
+                for (let r = 1; r < lines.length; r++) {
+                  const raw = lines[r];
+                  if (!raw.trim()) continue;
+                  // Basic CSV split; our template quotes fields containing commas
+                  const cols: string[] = [];
+                  let cur = '';
+                  let inQuotes = false;
+                  for (let c = 0; c < raw.length; c++) {
+                    const ch = raw[c];
+                    if (ch === '"') {
+                      if (inQuotes && raw[c + 1] === '"') { cur += '"'; c++; }
+                      else { inQuotes = !inQuotes; }
+                    } else if (ch === ',' && !inQuotes) {
+                      cols.push(cur); cur = '';
+                    } else {
+                      cur += ch;
+                    }
+                  }
+                  cols.push(cur);
+                  const get = (i: number) => (i >= 0 && i < cols.length ? cols[i].trim() : '');
+                  const name = get(iName);
+                  const email = get(iEmail);
+                  const role = get(iRole);
+                  if (!name || !email || !role) continue; // skip invalid
+                  const department = get(iDept) || null;
+                  let subjects: any = [];
+                  const subjRaw = get(iSubjects);
+                  if (subjRaw) {
+                    try {
+                      const parsed = JSON.parse(subjRaw);
+                      if (Array.isArray(parsed)) subjects = parsed;
+                    } catch {
+                      // try comma-separated fallback
+                      subjects = subjRaw.split(';').map(s => s.trim()).filter(Boolean);
+                    }
+                  }
+                  const status = (get(iStatus) || 'Active');
+                  items.push({ name, email, role, department, subjects, status });
+                }
+                if (items.length === 0) throw new Error('No valid rows parsed');
+                await axios.post('/api/staff/bulk', { items });
+                toast.success(`Uploaded ${items.length} staff record(s)`);
+                setBulkFile(null);
+                closeBulkAddModal();
+                fetchStaff();
+              } catch (err: any) {
+                toast.error(err?.response?.data?.message || err?.message || 'Bulk upload failed');
+              } finally {
+                setBulkLoading(false);
+              }
+            }}
+          >
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Upload CSV File *</label>
               <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-blue-400 dark:hover:border-blue-500 transition-colors">
                 <input 
                   type="file" 
                   accept=".csv"
+                  onChange={(e) => setBulkFile(e.target.files?.[0] || null)}
                   className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-300 dark:file:hover:bg-blue-800"
                   required
                 />
@@ -387,7 +562,7 @@ const StaffManagement: React.FC = () => {
             
             <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-600">
               <Button variant="outline" onClick={closeBulkAddModal} className="order-2 sm:order-1">Cancel</Button>
-              <Button type="submit" className="order-1 sm:order-2">Upload & Process</Button>
+              <Button type="submit" disabled={bulkLoading} className="order-1 sm:order-2">{bulkLoading ? 'Uploading...' : 'Upload & Process'}</Button>
             </div>
           </form>
         </div>
@@ -543,8 +718,9 @@ const StaffManagement: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 justify-between items-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-        <div className="relative w-full md:w-1/3">
+      <div className="flex flex-col gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+          <div className="relative w-full md:w-1/3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
@@ -553,24 +729,152 @@ const StaffManagement: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />
-        </div>
-        <div className="flex items-center gap-4">
-          <select
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          >
-            <option value="asc">Sort A-Z</option>
-            <option value="desc">Sort Z-A</option>
-          </select>
-          <div className="flex items-center gap-2">
-            <Button variant={view === 'list' ? 'primary' : 'outline'} onClick={() => setView('list')}><List className="w-5 h-5" /></Button>
-            <Button variant={view === 'card' ? 'primary' : 'outline'} onClick={() => setView('card')}><LayoutGrid className="w-5 h-5" /></Button>
           </div>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <select
+              value={sortBy}
+              onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1); }}
+              className="border border-gray-300 rounded-md px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              title="Sort By"
+            >
+              <option value="name">Name</option>
+              <option value="email">Email</option>
+              <option value="role">Role</option>
+              <option value="department">Department</option>
+              <option value="created_at">Created</option>
+            </select>
+            <select
+              value={sortOrder}
+              onChange={(e) => { setSortOrder(e.target.value); setCurrentPage(1); }}
+              className="border border-gray-300 rounded-md px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              title="Order"
+            >
+              <option value="asc">Sort A-Z</option>
+              <option value="desc">Sort Z-A</option>
+            </select>
+            <div className="flex items-center gap-2">
+              <Button variant={view === 'list' ? 'primary' : 'outline'} onClick={() => setView('list')}><List className="w-5 h-5" /></Button>
+              <Button variant={view === 'card' ? 'primary' : 'outline'} onClick={() => setView('card')}><LayoutGrid className="w-5 h-5" /></Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Dynamic Filters Row */}
+        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+          <select
+            value={departmentFilter}
+            onChange={(e) => { setDepartmentFilter(e.target.value); setCurrentPage(1); }}
+            className="px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
+          >
+            <option value="">All Departments</option>
+            {deptOptions.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+          <select
+            value={roleFilter}
+            onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
+            className="px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
+          >
+            <option value="">All Roles</option>
+            {roleOptions.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+            className="px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
+          >
+            <option value="">All Statuses</option>
+            {statusOptions.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => { setDepartmentFilter(''); setRoleFilter(''); setStatusFilter(''); setCurrentPage(1); }}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Clear Filters
+          </button>
         </div>
       </div>
 
-      {view === 'list' ? renderListView() : renderCardView()}
+      {/* List/Card with loading/empty states */}
+      {loadingList ? (
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400">
+          Loading staff...
+        </div>
+      ) : staff.length === 0 ? (
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400">
+          No staff found
+        </div>
+      ) : (
+        view === 'list' ? renderListView() : renderCardView()
+      )}
+
+      {/* Pagination footer - unified with Subjects.tsx */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          Showing {staff.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-{(currentPage - 1) * pageSize + staff.length} of {total}
+        </div>
+        <div className="flex items-center gap-3">
+          <select
+            value={pageSize}
+            onChange={(e) => { setPageSize(parseInt(e.target.value, 10)); setCurrentPage(1); }}
+            className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white"
+          >
+            <option value={5}>5 / page</option>
+            <option value={10}>10 / page</option>
+            <option value={20}>20 / page</option>
+            <option value={50}>50 / page</option>
+          </select>
+          <div className="flex items-center gap-1">
+            <button
+              className="p-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              aria-label="Previous"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            {(() => {
+              const btns: React.ReactNode[] = [];
+              const maxButtons = 5;
+              const totalPages = Math.max(1, Math.ceil(total / pageSize));
+              let start = Math.max(1, currentPage - 2);
+              let end = Math.min(totalPages, start + maxButtons - 1);
+              if (end - start + 1 < maxButtons) {
+                start = Math.max(1, end - maxButtons + 1);
+              }
+              for (let p = start; p <= end; p++) {
+                btns.push(
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    className={`px-3 py-1 rounded border text-sm ${
+                      p === currentPage
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                );
+              }
+              return btns;
+            })()}
+            <button
+              className="p-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+              onClick={() => setCurrentPage(p => Math.min(Math.max(1, Math.ceil(total / pageSize)), p + 1))}
+              disabled={currentPage >= Math.max(1, Math.ceil(total / pageSize))}
+              aria-label="Next"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

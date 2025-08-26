@@ -5,8 +5,8 @@ export default function SignIn() {
   return (
     <div className="flex items-center justify-center min-h-screen p-4 bg-gray-50 dark:bg-gray-900">
       <PageMeta
-        title="Sign In | Elog-book"
-        description="Sign in to your Elog-book account"
+        title="Sign In | Feedstream"
+        description="Sign in to your Feedstream account"
       />
       <SignInForm />
     </div>

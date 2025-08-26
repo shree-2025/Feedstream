@@ -1,96 +1,122 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import axios from 'axios';
 
 export type UserRole = 'MasterAdmin' | 'OrganizationAdmin' | 'DepartmentAdmin' | 'Staff' | 'Student' | 'EndUser';
 
 interface User {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   role: UserRole;
-  organization?: string;
+  avatar_url?: string | null;
+  department?: string | null;
+  phone?: string | null;
+  collegeName?: string | null;
+  collegeLogoUrl?: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string, role: UserRole) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Dummy users for different roles
-const dummyUsers: Record<UserRole, User> = {
-  MasterAdmin: {
-    id: '1',
-    name: 'Master Administrator',
-    email: 'master@elog.com',
-    role: 'MasterAdmin',
-  },
-  OrganizationAdmin: {
-    id: '2',
-    name: 'Organization Admin',
-    email: 'org-admin@elog.com',
-    role: 'OrganizationAdmin',
-  },
-  DepartmentAdmin: {
-    id: '3',
-    name: 'Department Admin',
-    email: 'dept-admin@elog.com',
-    role: 'DepartmentAdmin',
-  },
-  Staff: {
-    id: '4',
-    name: 'Staff Member',
-    email: 'staff@elog.com',
-    role: 'Staff',
-  },
-  Student: {
-    id: '5',
-    name: 'Student User',
-    email: 'student@elog.com',
-    role: 'Student',
-  },
-  EndUser: {
-    id: '6',
-    name: 'End User',
-    email: 'enduser@elog.com',
-    role: 'EndUser',
-  },
-};
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  // Normalize any user-shaped object to ensure _id is present and stringified
+  const normalizeUser = (raw: any): User | null => {
+    if (!raw || typeof raw !== 'object') return null;
+    const _id = raw._id ?? raw.id ?? raw.userId;
+    if (!_id) return null;
+    return {
+      _id: String(_id),
+      name: raw.name ?? '',
+      email: raw.email ?? '',
+      role: raw.role as UserRole,
+      avatar_url: raw.avatar_url ?? raw.avatarUrl ?? null,
+      department: raw.department ?? null,
+      phone: raw.phone ?? null,
+      collegeName: raw.collegeName ?? raw.college_name ?? null,
+      collegeLogoUrl: raw.collegeLogoUrl ?? raw.college_logo_url ?? null,
+    } as User;
+  };
 
-  const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Simple dummy authentication - any password works
-    if (email && password) {
-      const selectedUser = dummyUsers[role];
-      setUser(selectedUser);
-      localStorage.setItem('elog_user', JSON.stringify(selectedUser));
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const newKey = 'feedstream_user';
+      const oldKey = 'elog_user';
+      const saved = localStorage.getItem(newKey);
+      if (saved) {
+        return normalizeUser(JSON.parse(saved));
+      }
+      const legacy = localStorage.getItem(oldKey);
+      if (legacy) {
+        const normalized = normalizeUser(JSON.parse(legacy));
+        if (normalized) {
+          localStorage.setItem(newKey, JSON.stringify(normalized));
+        } else {
+          localStorage.setItem(newKey, legacy);
+        }
+        localStorage.removeItem(oldKey);
+        return normalized ?? JSON.parse(legacy);
+      }
+    } catch {}
+    return null;
+  });
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
+
+      const { data } = await axios.post(
+        '/api/users/login',
+        { email, password },
+        config
+      );
+
+      setUser(data);
+      localStorage.setItem('feedstream_user', JSON.stringify(data));
+      // cleanup old key if present
+      localStorage.removeItem('elog_user');
       return true;
+    } catch (error) {
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('feedstream_user');
     localStorage.removeItem('elog_user');
   };
 
-  // Check for existing user on mount
+  // Migration safety net (kept but state already hydrated above)
   React.useEffect(() => {
-    const savedUser = localStorage.getItem('elog_user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (error) {
-        localStorage.removeItem('elog_user');
+    try {
+      const newKey = 'feedstream_user';
+      const oldKey = 'elog_user';
+      if (!localStorage.getItem(newKey)) {
+        const legacy = localStorage.getItem(oldKey);
+        if (legacy) {
+          const normalized = normalizeUser(JSON.parse(legacy));
+          if (normalized) {
+            localStorage.setItem(newKey, JSON.stringify(normalized));
+            setUser(normalized);
+          } else {
+            localStorage.setItem(newKey, legacy);
+            setUser(JSON.parse(legacy));
+          }
+          localStorage.removeItem(oldKey);
+        }
       }
-    }
+    } catch {}
   }, []);
 
   const value = {
@@ -98,6 +124,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     login,
     logout,
     isAuthenticated: !!user,
+    updateUser: (updates: Partial<User>) => {
+      setUser((prev) => {
+        const next = { ...(prev as User), ...updates } as User;
+        try {
+          localStorage.setItem('feedstream_user', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

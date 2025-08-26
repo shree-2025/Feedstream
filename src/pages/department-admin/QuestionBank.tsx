@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { Edit, Trash2, Plus, Search, Upload, Download, X, Eye } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import toast from 'react-hot-toast';
+import { Edit, Trash2, Plus, Search, Upload, Download, X, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 interface Question {
   id: number;
@@ -13,39 +16,14 @@ interface Question {
 }
 
 const QuestionBank: React.FC = () => {
-  const [questions, setQuestions] = useState<Question[]>([
-    {
-      id: 1,
-      text: 'How would you rate the overall quality of the course?',
-      type: 'rating',
-      category: 'Course Quality',
-      description: 'This question evaluates the overall satisfaction with course content, delivery, and learning outcomes',
-      isRequired: true,
-      createdAt: '2024-01-15'
-    },
-    {
-      id: 3,
-      text: 'Which teaching method was most effective?',
-      type: 'multiple-choice',
-      options: ['Lectures', 'Practical Sessions', 'Group Discussions', 'Online Resources'],
-      category: 'Teaching Methods',
-      description: 'Multiple choice question to identify preferred teaching methodologies',
-      isRequired: true,
-      createdAt: '2024-01-17'
-    },
-    {
-      id: 2,
-      text: 'What did you like most about this course?',
-      type: 'text',
-      category: 'Course Content',
-      description: 'Open-ended question to gather positive feedback about specific course aspects',
-      isRequired: false,
-      createdAt: '2024-01-16'
-    },
-  ]);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loadingList, setLoadingList] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
@@ -58,6 +36,37 @@ const QuestionBank: React.FC = () => {
     description: '',
     isRequired: false,
   });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
+  // Confirm dialog state (deletions)
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+
+  // Fetch list from backend (server-side pagination + search)
+  const fetchQuestions = async (opts?: { page?: number; limit?: number; search?: string }) => {
+    setLoadingList(true);
+    try {
+      const page = opts?.page ?? currentPage;
+      const limit = opts?.limit ?? pageSize;
+      const search = opts?.search ?? searchTerm;
+      const { data } = await axios.get('/api/questions', { params: { page, limit, search } });
+      setQuestions(data.items || []);
+      setTotal(data.total || 0);
+    } catch (e) {
+      // Optionally toast error
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchQuestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, pageSize]);
 
   const handleAddQuestion = () => {
     setEditingQuestion(null);
@@ -90,7 +99,7 @@ const QuestionBank: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSaveQuestion = () => {
+  const handleSaveQuestion = async () => {
     if (!newQuestion.text || !newQuestion.category) return;
 
     const questionData: Question = {
@@ -106,74 +115,78 @@ const QuestionBank: React.FC = () => {
       })
     };
 
-    if (editingQuestion) {
-      setQuestions(questions.map(q => q.id === editingQuestion.id ? questionData : q));
-    } else {
-      setQuestions([...questions, questionData]);
+    try {
+      if (editingQuestion) {
+        await axios.put(`/api/questions/${editingQuestion.id}` , questionData);
+        toast.success('Question updated');
+      } else {
+        await axios.post('/api/questions', questionData);
+        toast.success('Question added');
+        // Jump to last page based on new total
+        const totalAfterAdd = total + 1;
+        const lastPage = Math.max(1, Math.ceil(totalAfterAdd / pageSize));
+        setCurrentPage(lastPage);
+      }
+      setIsModalOpen(false);
+      fetchQuestions();
+    } catch (e) {
+      toast.error('Failed to save question');
     }
-
-    setIsModalOpen(false);
   };
 
-  const handleDeleteQuestion = (id: number) => {
-    if (confirm('Are you sure you want to delete this question?')) {
-      setQuestions(questions.filter(q => q.id !== id));
-    }
-  };
-
-  const handleBulkUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type === 'text/csv') {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const csv = e.target?.result as string;
-        const lines = csv.split('\n');
-        const newQuestions: Question[] = [];
-        
-        // Skip header row
-        for (let i = 1; i < lines.length; i++) {
-          const [text, type, category, description, isRequired, ...options] = lines[i].split(',');
-          if (text && type && category) {
-            newQuestions.push({
-              id: Date.now() + i,
-              text: text.trim(),
-              type: type.trim() as 'multiple-choice' | 'text' | 'rating',
-              category: category.trim(),
-              description: description.trim(),
-              isRequired: isRequired.trim() === 'true',
-              createdAt: new Date().toISOString().split('T')[0],
-              ...(type.trim() === 'multiple-choice' && {
-                options: options.map(opt => opt.trim()).filter(opt => opt !== '')
-              })
-            });
-          }
+  const requestDeleteQuestion = (id: number) => {
+    setConfirmMessage('Are you sure you want to delete this question? This action cannot be undone.');
+    setConfirmAction(() => async () => {
+      try {
+        await axios.delete(`/api/questions/${id}`);
+        if (questions.length === 1 && currentPage > 1) {
+          setCurrentPage(currentPage - 1);
+        } else {
+          fetchQuestions();
         }
-        
-        setQuestions([...questions, ...newQuestions]);
-        setIsBulkUploadOpen(false);
-      };
-      reader.readAsText(file);
+        toast.success('Question deleted');
+      } catch (e) {
+        toast.error('Failed to delete question');
+      } finally {
+        setConfirmOpen(false);
+      }
+    });
+    setConfirmOpen(true);
+  };
+
+  const parseCsvLine = (raw: string) => {
+    const cols: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let c = 0; c < raw.length; c++) {
+      const ch = raw[c];
+      if (ch === '"') {
+        if (inQuotes && raw[c + 1] === '"') { cur += '"'; c++; }
+        else { inQuotes = !inQuotes; }
+      } else if (ch === ',' && !inQuotes) {
+        cols.push(cur); cur = '';
+      } else {
+        cur += ch;
+      }
     }
+    cols.push(cur);
+    return cols;
   };
 
-  const downloadTemplate = () => {
-    const csvContent = "Question Text,Type,Category,Description,Is Required,Option 1,Option 2,Option 3,Option 4\n" +
-      "How would you rate the overall quality of the course?,rating,Course Quality,This question evaluates the overall satisfaction with course content, delivery, and learning outcomes,true\n" +
-      "Which teaching method was most effective?,multiple-choice,Teaching Methods,Multiple choice question to identify preferred teaching methodologies,true,Lectures,Practical Sessions,Group Discussions,Online Resources";
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'question_bank_template.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
 
-  const filteredQuestions = questions.filter(question =>
-    question.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    question.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // When search changes, go to page 1 and fetch
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      setCurrentPage(1);
+      fetchQuestions({ page: 1, limit: pageSize, search: searchTerm });
+    }, 300);
+    return () => clearTimeout(debounce);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const pageStartIndex = (currentPage - 1) * pageSize;
+  const currentItems = questions; // already paginated by server
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto">
@@ -197,6 +210,17 @@ const QuestionBank: React.FC = () => {
         </div>
       </div>
 
+      {/* Global Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Confirm Deletion"
+        message={confirmMessage}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={() => confirmAction && confirmAction()}
+        onCancel={() => setConfirmOpen(false)}
+      />
+
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -210,9 +234,9 @@ const QuestionBank: React.FC = () => {
       </div>
 
       {/* Questions List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 min-h-[400px]">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="min-w-full bg-white dark:bg-gray-800">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -233,7 +257,17 @@ const QuestionBank: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
-              {filteredQuestions.map((question) => (
+              {loadingList && (
+                <tr>
+                  <td className="px-3 md:px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-400" colSpan={5}>Loading...</td>
+                </tr>
+              )}
+              {!loadingList && currentItems.length === 0 && (
+                <tr>
+                  <td className="px-3 md:px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-400" colSpan={5}>No questions found</td>
+                </tr>
+              )}
+              {!loadingList && currentItems.map((question) => (
                 <tr key={question.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-3 md:px-6 py-4">
                     <div className="text-sm text-gray-900 dark:text-white break-words max-w-xs md:max-w-md">{question.text}</div>
@@ -269,8 +303,8 @@ const QuestionBank: React.FC = () => {
                         <Edit size={16} />
                       </button>
                       <button
-                        onClick={() => handleDeleteQuestion(question.id)}
-                        className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                        onClick={() => requestDeleteQuestion(question.id)}
+                        className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                         title="Delete Question"
                       >
                         <Trash2 size={16} />
@@ -281,6 +315,67 @@ const QuestionBank: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+      {/* Pagination footer (outside card) */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-3 px-1 md:px-0 mt-3">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          Showing {total === 0 ? 0 : pageStartIndex + 1}-{Math.min(pageStartIndex + pageSize, total)} of {total}
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white"
+          >
+            <option value={5}>5 / page</option>
+            <option value={10}>10 / page</option>
+            <option value={20}>20 / page</option>
+            <option value={50}>50 / page</option>
+          </select>
+          <div className="flex items-center gap-1">
+            <button
+              className="p-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              aria-label="Previous"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            {(() => {
+              const btns = [] as React.ReactNode[];
+              const maxButtons = 5;
+              let start = Math.max(1, currentPage - 2);
+              let end = Math.min(totalPages, start + maxButtons - 1);
+              if (end - start + 1 < maxButtons) {
+                start = Math.max(1, end - maxButtons + 1);
+              }
+              for (let p = start; p <= end; p++) {
+                btns.push(
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    className={`px-3 py-1 rounded border text-sm ${
+                      p === currentPage
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                );
+              }
+              return btns;
+            })()}
+            <button
+              className="p-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              aria-label="Next"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -390,28 +485,100 @@ const QuestionBank: React.FC = () => {
             </div>
             <div className="space-y-4">
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                Upload a CSV file with your questions. Download the template below to see the required format.
+                Upload a CSV file with your questions. Required headers: <code>text,type,options,category,description,isRequired</code>.
               </div>
-              
-              <button
-                onClick={downloadTemplate}
+              <a
+                href="/api/questions/template.csv"
+                target="_blank"
+                rel="noreferrer"
                 className="flex items-center gap-2 w-full px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-300"
               >
                 <Download size={16} />
                 Download CSV Template
-              </button>
+              </a>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Upload CSV File
-                </label>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleBulkUpload}
-                  className="w-full p-2 md:p-3 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                />
-              </div>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!bulkFile) { toast.error('Please choose a CSV file'); return; }
+                  setBulkLoading(true);
+                  try {
+                    const csv = await bulkFile.text();
+                    const lines = csv.split(/\r?\n/).filter(l => l.trim().length > 0);
+                    if (lines.length <= 1) throw new Error('CSV has no data rows');
+                    const header = parseCsvLine(lines[0]).map(h => h.trim().replace(/^\ufeff/, '').toLowerCase());
+                    const idx = (name: string) => header.indexOf(name);
+                    const iText = idx('text');
+                    const iType = idx('type');
+                    const iOptions = idx('options');
+                    const iCategory = idx('category');
+                    const iDescription = idx('description');
+                    const iIsReq = idx('isrequired');
+                    const items: any[] = [];
+                    for (let r = 1; r < lines.length; r++) {
+                      const cols = parseCsvLine(lines[r]);
+                      const get = (i: number) => (i >= 0 && i < cols.length ? cols[i].trim() : '');
+                      const text = get(iText);
+                      const type = get(iType);
+                      const category = get(iCategory);
+                      if (!text || !type || !category) continue;
+                      let options: string[] | undefined = undefined;
+                      const optRaw = get(iOptions);
+                      if (optRaw) {
+                        try {
+                          const parsed = JSON.parse(optRaw);
+                          if (Array.isArray(parsed)) options = parsed;
+                        } catch {
+                          options = optRaw.split(';').map(s => s.trim()).filter(Boolean);
+                        }
+                      }
+                      const description = get(iDescription) || '';
+                      const isRequired = /^true$/i.test(get(iIsReq));
+                      items.push({ text, type, options, category, description, isRequired });
+                    }
+                    if (items.length === 0) throw new Error('No valid rows parsed');
+                    await axios.post('/api/questions/bulk', { items });
+                    toast.success(`Uploaded ${items.length} question(s)`);
+                    setBulkFile(null);
+                    setIsBulkUploadOpen(false);
+                    fetchQuestions();
+                  } catch (err: any) {
+                    toast.error(err?.response?.data?.message || err?.message || 'Bulk upload failed');
+                  } finally {
+                    setBulkLoading(false);
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Upload CSV File
+                  </label>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => setBulkFile(e.target.files?.[0] || null)}
+                    className="w-full p-2 md:p-3 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkUploadOpen(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={bulkLoading}
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-60"
+                  >
+                    {bulkLoading ? 'Uploading...' : 'Upload & Process'}
+                  </button>
+                </div>
+              </form>
             </div>
 
             <div className="flex justify-end gap-3 mt-6">

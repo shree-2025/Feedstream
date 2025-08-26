@@ -1,4 +1,4 @@
-// Export/Import utilities for E-Log Book system
+// Export/Import utilities for Feedstream system
 
 export interface LogEntry {
   id: string;
