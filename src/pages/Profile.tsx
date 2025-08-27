@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../lib/axios';
 import PageMeta from '../components/common/PageMeta';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -32,7 +32,7 @@ export default function Profile() {
     // Load profile from backend to ensure freshness
     (async () => {
       try {
-        const { data } = await axios.get(`/api/users/${user._id}`);
+        const { data } = await api.get(`/api/users/${user._id}`);
         const next = {
           name: data.name || '',
           department: data.department || '',
@@ -69,7 +69,7 @@ export default function Profile() {
     if (!user || !user._id) return;
     setLoading(true);
     try {
-      const { data } = await axios.put(`/api/users/${user._id}`, {
+      const { data } = await api.put(`/api/users/${user._id}`, {
         name: form.name,
         department: form.department,
         phone: form.phone,
@@ -110,7 +110,7 @@ export default function Profile() {
     formData.append('avatar', file);
     setLoading(true);
     try {
-      const { data } = await axios.post(`/api/users/${user._id}/avatar`, formData, {
+      const { data } = await api.post(`/api/users/${user._id}/avatar`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setForm((prev) => ({ ...prev, avatar_url: data.avatar_url || null }));
@@ -125,7 +125,12 @@ export default function Profile() {
     }
   };
 
-  const avatarSrc = form.avatar_url || '/images/user/owner.jpg';
+  const base = import.meta.env.VITE_API_URL as string | undefined;
+  const avatarSrc = form.avatar_url
+    ? (form.avatar_url.startsWith('http')
+        ? form.avatar_url
+        : (base ? `${base}/uploads/${form.avatar_url}` : `/uploads/${form.avatar_url}`))
+    : '/images/user/owner.jpg';
 
   return (
     <>
