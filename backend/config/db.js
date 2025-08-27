@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 let pool;
 
 async function ensureDatabaseExists() {
-  const host = process.env.MYSQL_HOST || process.env.DB_HOST || 'sh003.bigrock.com';
+  const host = process.env.MYSQL_HOST || process.env.DB_HOST || 'sns5.bigrock.com';
   const port = Number(process.env.MYSQL_PORT || process.env.DB_PORT || 3306);
   const user = process.env.MYSQL_USER || process.env.DB_USERNAME || 'ctronyt8_root';
   const password = process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || 'ctx@2025';
