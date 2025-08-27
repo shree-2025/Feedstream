@@ -126,11 +126,26 @@ export default function Profile() {
   };
 
   const base = import.meta.env.VITE_API_URL as string | undefined;
-  const avatarSrc = form.avatar_url
-    ? (form.avatar_url.startsWith('http')
-        ? form.avatar_url
-        : (base ? `${base}/uploads/${form.avatar_url}` : `/uploads/${form.avatar_url}`))
-    : '/images/user/owner.jpg';
+  const avatarSrc = (() => {
+    const v = form.avatar_url;
+    if (!v) return '/images/user/owner.jpg';
+    // Absolute URL provided by backend or stored in DB
+    if (v.startsWith('http://') || v.startsWith('https://')) {
+      // If absolute URL points to frontend host but path is /uploads, rewrite to backend host
+      try {
+        const url = new URL(v);
+        if (url.pathname.startsWith('/uploads') && base) {
+          const b = new URL(base);
+          return `${b.origin}${url.pathname}`;
+        }
+      } catch {}
+      return v;
+    }
+    // Backend stores path like "/uploads/avatars/<file>"
+    if (v.startsWith('/uploads')) return base ? `${base}${v}` : v;
+    // Bare filename like "avatar_xxx.png"
+    return base ? `${base}/uploads/${v}` : `/uploads/${v}`;
+  })();
 
   return (
     <>

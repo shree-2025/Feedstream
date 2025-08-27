@@ -14,6 +14,23 @@ export default function UserDropdown() {
   function closeDropdown() {
     setIsOpen(false);
   }
+  const base = (import.meta as any)?.env?.VITE_API_URL as string | undefined;
+  const avatarSrc = (() => {
+    const v = user?.avatar_url as string | undefined | null;
+    if (!v) return '/images/user/owner.jpg';
+    if (v.startsWith('http://') || v.startsWith('https://')) {
+      try {
+        const url = new URL(v);
+        if (url.pathname.startsWith('/uploads') && base) {
+          const b = new URL(base);
+          return `${b.origin}${url.pathname}`;
+        }
+      } catch {}
+      return v;
+    }
+    if (v.startsWith('/uploads')) return base ? `${base}${v}` : v;
+    return base ? `${base}/uploads/${v}` : `/uploads/${v}`;
+  })();
   return (
     <div className="relative">
       <button
@@ -21,7 +38,7 @@ export default function UserDropdown() {
         className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400"
       >
         <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
-          <img src={user?.avatar_url || "/images/user/owner.jpg"} alt="User" />
+          <img src={avatarSrc} alt="User" />
         </span>
 
         <span className="block mr-1 font-medium text-theme-sm">{user?.name || 'User'}</span>
