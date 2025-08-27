@@ -247,13 +247,33 @@ const AppSidebar: React.FC = () => {
         {user && (isExpanded || isHovered || isMobileOpen) && (
           <div className="px-4 py-3 border-b dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center space-x-3">
-              {user.avatar_url ? (
-                <img
-                  src={user.avatar_url}
-                  alt={user.name}
-                  className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700"
-                />
-              ) : (
+              {(() => {
+                const base = (import.meta as any)?.env?.VITE_API_URL as string | undefined;
+                const v = user.avatar_url as string | undefined | null;
+                const url = (() => {
+                  if (!v) return '/images/user/owner.jpg';
+                  if (v.startsWith('http://') || v.startsWith('https://')) {
+                    try {
+                      const u = new URL(v);
+                      if (u.pathname.startsWith('/uploads') && base) {
+                        const b = new URL(base);
+                        return `${b.origin}${u.pathname}`;
+                      }
+                    } catch {}
+                    return v;
+                  }
+                  if (v.startsWith('/uploads')) return base ? `${base}${v}` : v;
+                  return base ? `${base}/uploads/${v}` : `/uploads/${v}`;
+                })();
+                return (
+                  <img
+                    src={url}
+                    alt={user.name}
+                    className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+                  />
+                );
+              })()}
+              { !user.avatar_url && (
                 <div className="w-10 h-10 bg-brand-500 rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-medium">
                     {user.name.charAt(0).toUpperCase()}
