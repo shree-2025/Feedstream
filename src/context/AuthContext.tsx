@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import axios from 'axios';
+import api from '../lib/axios';
 
 export type UserRole = 'MasterAdmin' | 'OrganizationAdmin' | 'DepartmentAdmin' | 'Staff' | 'Student' | 'EndUser';
 
@@ -75,7 +75,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
       };
 
-      const { data } = await axios.post(
+      const { data } = await api.post(
         '/api/users/login',
         { email, password },
         config
