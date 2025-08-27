@@ -6,6 +6,9 @@ import svgr from "vite-plugin-svgr";
 export default defineConfig(({ mode }) => {
   // Load env variables based on mode
   const env = loadEnv(mode, process.cwd(), '');
+  const apiTarget = env.VITE_API_URL && env.VITE_API_URL.trim().length > 0
+    ? env.VITE_API_URL
+    : 'http://127.0.0.1:5000';
   
   return {
   plugins: [
@@ -21,12 +24,12 @@ export default defineConfig(({ mode }) => {
   server: {
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5000',
+        target: apiTarget,
         changeOrigin: true,
         // Do not rewrite; backend already expects /api prefix
       },
       '/uploads': {
-        target: 'http://127.0.0.1:5000',
+        target: apiTarget,
         changeOrigin: true,
       },
     },
