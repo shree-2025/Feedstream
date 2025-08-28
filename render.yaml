@@ -3,8 +3,12 @@ services:
   - type: web
     name: feedstream
     env: node
-    buildCommand: npm install --no-optional && npm run build
-    startCommand: npm run preview -- --port $PORT
+    buildCommand: |
+      npm install --no-optional \
+      && npm run build \
+      && cd backend \
+      && npm install --no-optional
+    startCommand: node backend/server.js
     envVars:
       - key: NODE_ENV
         value: production
