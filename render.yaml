@@ -1,14 +1,37 @@
+# # Render configuration for deployment
+# services:
+#   - type: web
+#     name: feedstream
+#     env: node
+#     buildCommand: |
+#       npm install --no-optional \
+#       && npm run build \
+#       && cd backend \
+#       && npm install --no-optional
+#     startCommand: node backend/server.js
+#     envVars:
+#       - key: NODE_ENV
+#         value: production
+#       - key: NPM_CONFIG_PLATFORM
+#         value: linux
+#     build:
+#       os: ubuntu22.04
+#       nodeVersion: 18.x
+
+
 # Render configuration for deployment
+
 services:
+  # ---------------------------
+  # Backend Service
+  # ---------------------------
   - type: web
-    name: feedstream
+    name: feedstream-backend
     env: node
     buildCommand: |
-      npm install --no-optional \
-      && npm run build \
-      && cd backend \
+      cd backend \
       && npm install --no-optional
-    startCommand: node backend/server.js
+    startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
@@ -17,3 +40,19 @@ services:
     build:
       os: ubuntu22.04
       nodeVersion: 18.x
+
+  # ---------------------------
+  # Frontend Service
+  # ---------------------------
+  - type: web
+    name: feedstream-frontend
+    env: static
+    buildCommand: npm install --no-optional && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_ENV
+        value: production
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
