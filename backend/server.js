@@ -15,6 +15,10 @@ app.use(express.json());
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Serve frontend build (dist) static assets
+const distPath = path.join(__dirname, '..', 'dist');
+app.use(express.static(distPath));
+
 const userRoutes = require('./routes/userRoutes.js');
 const questionRoutes = require('./routes/questionRoutes.js');
 const staffRoutes = require('./routes/staffRoutes.js');
@@ -29,6 +33,12 @@ app.use('/api/feedback-forms', feedbackFormRoutes);
 
 app.get('/', (req, res) => {
   res.send('API is running...');
+});
+
+// SPA history fallback: for any non-API route, serve index.html
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  res.sendFile(path.join(distPath, 'index.html'));
 });
 
 const PORT = process.env.PORT || 5000;
