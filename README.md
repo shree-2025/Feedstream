@@ -190,3 +190,61 @@ Elogbook React.js Free Version is released under the MIT License.
 
 If you find this project helpful, please consider giving it a star on GitHub. Your support helps us continue developing
 and maintaining this template.
+
+---
+
+## Deployment Guide (Render + BigRock MySQL)
+
+This repo is now deployment-ready for a split frontend (Vite static site) and backend (Node/Express) using Render. Database is MySQL (e.g., BigRock).
+
+### 1) Configure environment variables
+
+- Frontend (`.env` in project root):
+  - `VITE_API_BASE_URL=https://<your-backend-service>.onrender.com`
+
+- Backend (`backend/.env`):
+  - `CORS_ORIGIN=https://<your-frontend>.onrender.com`
+  - `MYSQL_HOST=<your-bigrock-host>`
+  - `MYSQL_PORT=3306`
+  - `MYSQL_USER=<your-db-user>`
+  - `MYSQL_PASSWORD=<your-db-pass>`
+  - `MYSQL_DATABASE=feedstream`
+  - `JWT_SECRET=<strong-secret>`
+
+Examples are provided in `.env.example` and `backend/.env.example`.
+
+### 2) Render blueprint deploy
+
+Render reads `render.yaml` and creates two services:
+
+- Frontend: `feedstream-frontend` (type: static)
+  - Build: `npm ci && npm run build`
+  - Publishes `dist/`
+  - Set env var `VITE_API_BASE_URL` to the backend URL after backend is live
+  - SPA routing handled by `public/_redirects`
+
+- Backend: `feedstream-backend` (type: web, Node)
+  - Build: `npm ci`
+  - Start: `node server.js`
+  - Health check: `/health`
+  - Set `CORS_ORIGIN` to your frontend URL and all `MYSQL_*` vars from BigRock
+
+Steps:
+
+1. Push this repo to GitHub.
+2. In Render, New > Blueprint, and point to your repo with `render.yaml`.
+3. After deploy:
+   - Copy backend public URL and set it as `VITE_API_BASE_URL` in the frontend service.
+   - Set `CORS_ORIGIN` in backend to your frontend public URL.
+   - Fill all MySQL credentials from BigRock in backend service.
+4. Redeploy both services.
+
+### 3) BigRock MySQL
+
+Provide host, port, username, password in backend env. On first start, the backend will create the `feedstream` database and required tables automatically (`backend/config/db.js`).
+
+### 4) Axios global config
+
+Axios base URL is set globally in `src/main.tsx` using `VITE_API_BASE_URL`. A shared client is available at `src/lib/http.ts`.
+
+Note: If you render images/files from `/uploads`, reference the absolute backend URL, e.g. `${VITE_API_BASE_URL}/uploads/...`.
