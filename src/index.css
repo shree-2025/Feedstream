@@ -777,3 +777,23 @@ span.flatpickr-weekday,
 .simplebar-scrollbar.simplebar-visible:before {
   @apply opacity-100;
 }
+
+/* Dark mode: force all text to white */
+.dark {
+  color: #ffffff;
+}
+.dark :is(p, h1, h2, h3, h4, h5, h6, span, small, strong, em, label, a, li, dt, dd, th, td, code, pre, blockquote, div) {
+  color: #ffffff !important;
+}
+/* Override common Tailwind text utility classes to white in dark mode */
+.dark :is([class*="text-gray-"], .text-black, .text-neutral-900, .text-slate-900, .text-zinc-900) {
+  color: #ffffff !important;
+}
+/* Placeholder text */
+.dark ::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+/* Inputs and form controls text color */
+.dark :is(input, textarea, select) {
+  color: #ffffff !important;
+}

@@ -201,7 +201,7 @@ export default function Profile() {
                 <div className="space-y-4">
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-500 dark:text-gray-400">Name</label>
-                    <div className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 dark:border-gray-800 dark:text-gray-200 bg-gray-50 dark:bg:white/5">{form.name || '-'}</div>
+                    <div className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 dark:border-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-white/5">{form.name || '-'}</div>
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
@@ -228,26 +228,26 @@ export default function Profile() {
                 <>
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-                    <input name="name" value={form.name} onChange={onChange} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-800 dark:bg-transparent" />
+                    <input name="name" value={form.name} onChange={onChange} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 dark:border-gray-800 dark:bg-transparent dark:text-white dark:placeholder-gray-400" />
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Branch</label>
-                      <input name="department" value={form.department} onChange={onChange} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-800 dark:bg-transparent" />
+                      <input name="department" value={form.department} onChange={onChange} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 dark:border-gray-800 dark:bg-transparent dark:text-white dark:placeholder-gray-400" />
                     </div>
                     <div>
                       <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
-                      <input name="phone" value={form.phone} onChange={onChange} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-800 dark:bg-transparent" />
+                      <input name="phone" value={form.phone} onChange={onChange} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 dark:border-gray-800 dark:bg-transparent dark:text-white dark:placeholder-gray-400" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">College Name</label>
-                      <input name="collegeName" value={form.collegeName} onChange={onChange} placeholder="e.g., ABC Institute of Technology" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-800 dark:bg-transparent" />
+                      <input name="collegeName" value={form.collegeName} onChange={onChange} placeholder="e.g., ABC Institute of Technology" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 dark:border-gray-800 dark:bg-transparent dark:text-white dark:placeholder-gray-400" />
                     </div>
                     <div>
                       <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">College Logo URL</label>
-                      <input name="collegeLogoUrl" value={form.collegeLogoUrl} onChange={onChange} placeholder="https://.../logo.png" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-800 dark:bg-transparent" />
+                      <input name="collegeLogoUrl" value={form.collegeLogoUrl} onChange={onChange} placeholder="https://.../logo.png" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 dark:border-gray-800 dark:bg-transparent dark:text-white dark:placeholder-gray-400" />
                       <p className="mt-1 text-xs text-gray-500">Provide a public image URL. Uploads may be supported later.</p>
                     </div>
                   </div>

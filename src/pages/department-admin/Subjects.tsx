@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Plus, Search, Eye, FileText, Edit, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
@@ -27,6 +28,7 @@ const Subjects: React.FC = () => {
   const [limit, setLimit] = useState<number>(10);
   const [order] = useState<'asc' | 'desc'>('asc');
   const [loading, setLoading] = useState<boolean>(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -74,6 +76,16 @@ const Subjects: React.FC = () => {
     fetchSubjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, order, departmentFilter, semesterFilter, typeFilter]);
+
+  // Read semester from URL on mount and when it changes
+  useEffect(() => {
+    const sem = searchParams.get('semester') || '';
+    // Only update if different to avoid loops
+    setSemesterFilter(prev => (prev !== sem ? sem : prev));
+    // If a semester is in URL, go to first page to show from start
+    if (sem) setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Debounce search
   useEffect(() => {
@@ -239,7 +251,18 @@ const Subjects: React.FC = () => {
         </select>
         <select
           value={semesterFilter}
-          onChange={(e) => { setSemesterFilter(e.target.value); setPage(1); }}
+          onChange={(e) => {
+            const value = e.target.value;
+            setSemesterFilter(value);
+            setPage(1);
+            const next = new URLSearchParams(searchParams);
+            if (value) {
+              next.set('semester', value);
+            } else {
+              next.delete('semester');
+            }
+            setSearchParams(next, { replace: true });
+          }}
           className="px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
         >
           <option value="">All Semesters</option>
@@ -264,7 +287,15 @@ const Subjects: React.FC = () => {
           <option value="project">Project</option>
         </select>
         <button
-          onClick={() => { setDepartmentFilter(''); setSemesterFilter(''); setTypeFilter(''); setPage(1); }}
+          onClick={() => {
+            setDepartmentFilter('');
+            setSemesterFilter('');
+            setTypeFilter('');
+            setPage(1);
+            const next = new URLSearchParams(searchParams);
+            next.delete('semester');
+            setSearchParams(next, { replace: true });
+          }}
           className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
         >
           Clear Filters

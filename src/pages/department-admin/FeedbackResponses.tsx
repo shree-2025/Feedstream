@@ -46,6 +46,11 @@ const FeedbackResponses: React.FC = () => {
   const [activeLoading, setActiveLoading] = useState(false);
   const [activeError, setActiveError] = useState<string | null>(null);
 
+  // Total responses across all forms (based on counts map)
+  const totalResponses = useMemo(() => {
+    return Object.values(counts).reduce((a, b) => a + (Number(b) || 0), 0);
+  }, [counts]);
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -160,6 +165,11 @@ const FeedbackResponses: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Feedback Responses</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">View forms, counts, and responses. Export as CSV.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200 text-sm dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-400/30">
+              Total responses: {totalResponses}
+            </span>
           </div>
         </div>
 

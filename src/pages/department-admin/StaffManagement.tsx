@@ -205,7 +205,9 @@ const StaffManagement: React.FC = () => {
       />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${member.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${member.status === 'Active' 
+                    ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-200 dark:border-green-400/30' 
+                    : 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-200 dark:border-red-400/30'}`}>
                     {member.status}
                   </span>
                 </td>
@@ -265,7 +267,9 @@ const StaffManagement: React.FC = () => {
                   ))}
                 </div>
               </div>
-              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${member.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${member.status === 'Active' 
+                ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-200 dark:border-green-400/30' 
+                : 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-200 dark:border-red-400/30'}`}>
                 {member.status}
               </span>
             </div>

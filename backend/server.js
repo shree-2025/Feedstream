@@ -24,12 +24,14 @@ const questionRoutes = require('./routes/questionRoutes.js');
 const staffRoutes = require('./routes/staffRoutes.js');
 const subjectRoutes = require('./routes/subjectRoutes.js');
 const feedbackFormRoutes = require('./routes/feedbackFormRoutes.js');
+const dashboardRoutes = require('./routes/dashboardRoutes.js');
 
 app.use('/api/users', userRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/feedback-forms', feedbackFormRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.get('/', (req, res) => {
   res.send('API is running...');

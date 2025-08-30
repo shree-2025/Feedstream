@@ -31,6 +31,9 @@ exports.createFeedbackForm = async (req, res) => {
 
     const [rows] = await pool.query('SELECT * FROM feedback_forms WHERE id = ?', [result.insertId]);
     const form = rows[0];
+    const isActive = (form.status && String(form.status).toLowerCase() === 'active') || (
+      form.start_date && form.end_date && (new Date().toISOString().slice(0,10) >= String(form.start_date).slice(0,10)) && (new Date().toISOString().slice(0,10) <= String(form.end_date).slice(0,10))
+    );
     res.status(201).json({
       id: form.id,
       slug: form.slug,
@@ -42,6 +45,8 @@ exports.createFeedbackForm = async (req, res) => {
       endDate: form.end_date,
       semester: form.semester || null,
       createdAt: form.created_at,
+      status: form.status || null,
+      isActive,
     });
   } catch (err) {
     console.error('createFeedbackForm error', err);
@@ -80,7 +85,7 @@ exports.updateFeedbackForm = async (req, res) => {
     const formId = parseInt(id, 10);
     if (!Number.isFinite(formId)) return res.status(400).json({ message: 'Valid form id is required' });
 
-    const { teacherId, subjectId, questionIds, startDate, endDate, semester, title } = req.body || {};
+    const { teacherId, subjectId, questionIds, startDate, endDate, semester, title, status } = req.body || {};
 
     // Basic validation (allow partial but at least one updatable field)
     const updates = [];
@@ -92,6 +97,7 @@ exports.updateFeedbackForm = async (req, res) => {
     if (startDate != null) { updates.push('start_date = ?'); params.push(startDate); }
     if (endDate != null) { updates.push('end_date = ?'); params.push(endDate); }
     if (semester != null) { updates.push('semester = ?'); params.push(semester); }
+    if (status !== undefined) { updates.push('status = ?'); params.push(status || null); }
 
     if (updates.length === 0) {
       return res.status(400).json({ message: 'No valid fields to update' });
@@ -102,9 +108,12 @@ exports.updateFeedbackForm = async (req, res) => {
     const [result] = await pool.query(sql, params);
     if (result.affectedRows === 0) return res.status(404).json({ message: 'Form not found' });
 
-    const [rows] = await pool.query('SELECT id, title, slug, teacher_id, subject_id, question_ids, start_date, end_date, semester, created_at FROM feedback_forms WHERE id = ? LIMIT 1', [formId]);
+    const [rows] = await pool.query('SELECT id, title, slug, teacher_id, subject_id, question_ids, start_date, end_date, semester, status, created_at FROM feedback_forms WHERE id = ? LIMIT 1', [formId]);
     const form = rows && rows[0];
     if (!form) return res.status(404).json({ message: 'Form not found' });
+    const isActive = (form.status && String(form.status).toLowerCase() === 'active') || (
+      form.start_date && form.end_date && (new Date().toISOString().slice(0,10) >= String(form.start_date).slice(0,10)) && (new Date().toISOString().slice(0,10) <= String(form.end_date).slice(0,10))
+    );
 
     res.json({
       id: form.id,
@@ -134,13 +143,14 @@ exports.listForms = async (req, res) => {
     const [[countRow]] = await pool.query('SELECT COUNT(*) as cnt FROM feedback_forms');
     const total = countRow?.cnt || 0;
     const [rows] = await pool.query(
-      `SELECT f.id, f.title, f.slug, f.teacher_id, f.subject_id, f.question_ids, f.start_date, f.end_date, f.semester, f.created_at,
-              st.name AS staff_name, sub.name AS subject_name
+      `SELECT f.id, f.title, f.slug, f.teacher_id, f.subject_id, f.question_ids, f.start_date, f.end_date, f.semester, f.status, f.created_at,
+              st.name AS staff_name, sub.name AS subject_name,
+              CASE WHEN (LOWER(COALESCE(f.status, '')) = 'active') OR (CURRENT_DATE() BETWEEN f.start_date AND f.end_date) THEN 1 ELSE 0 END AS is_active
          FROM feedback_forms f
     LEFT JOIN staff st ON st.id = f.teacher_id
     LEFT JOIN subjects sub ON sub.id = f.subject_id
-        ORDER BY f.created_at DESC
-        LIMIT ? OFFSET ?`,
+         ORDER BY f.created_at DESC
+         LIMIT ? OFFSET ?`,
       [limit, offset]
     );
     const items = rows.map((form) => {
@@ -155,7 +165,9 @@ exports.listForms = async (req, res) => {
         startDate: form.start_date,
         endDate: form.end_date,
         semester: form.semester || null,
+        status: form.status || null,
         createdAt: form.created_at,
+        isActive: !!form.is_active,
       };
     });
     res.json({ items, total, page, limit });
@@ -297,6 +309,9 @@ exports.getFeedbackForm = async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM feedback_forms WHERE slug = ? LIMIT 1', [slug]);
     if (!rows || rows.length === 0) return res.status(404).json({ message: 'Form not found' });
     const form = rows[0];
+    const isActive = (form.status && String(form.status).toLowerCase() === 'active') || (
+      form.start_date && form.end_date && (new Date().toISOString().slice(0,10) >= String(form.start_date).slice(0,10)) && (new Date().toISOString().slice(0,10) <= String(form.end_date).slice(0,10))
+    );
     res.json({
       id: form.id,
       title: form.title || null,
@@ -306,7 +321,9 @@ exports.getFeedbackForm = async (req, res) => {
       questionIds: JSON.parse(form.question_ids || '[]'),
       startDate: form.start_date,
       endDate: form.end_date,
+      status: form.status || null,
       createdAt: form.created_at,
+      isActive,
     });
   } catch (err) {
     console.error('getFeedbackForm error', err);

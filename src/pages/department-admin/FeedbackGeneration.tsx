@@ -7,6 +7,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { toast } from 'react-hot-toast';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface Question {
   id: string;
@@ -44,12 +45,15 @@ interface FeedbackForm {
   endDate: string;
   targetAudience: 'students' | 'parents' | 'staff';
   isActive: boolean;
+  status?: string;
   createdAt: string;
   formLink: string;
 }
 
 const FeedbackGeneration: React.FC = () => {
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -60,6 +64,17 @@ const FeedbackGeneration: React.FC = () => {
   const [loadingForms, setLoadingForms] = useState(false);
   const [formsError, setFormsError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+
+  // Filter: show only active forms when coming from dashboard (?active=1)
+  const [showOnlyActive, setShowOnlyActive] = useState<boolean>(false);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const wantActive = params.get('active');
+    setShowOnlyActive(wantActive === '1' || wantActive === 'true');
+  }, [location.search]);
+
+  const activeCount = forms.filter(f => f.isActive).length;
+  const displayedForms = showOnlyActive ? forms.filter(f => f.isActive) : forms;
   // Confirm delete modal state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -171,6 +186,15 @@ const FeedbackGeneration: React.FC = () => {
               const subjObj = subjectList.find(x => x.id === sId) || { id: sId, name: `Subject ${sId}` } as Subject;
               const qIdsStr = (f.questionIds || []).map((x: any) => String(x));
               const qObjs = questionList.filter(q => qIdsStr.includes(String(q.id)));
+              const computeActive = (): boolean => {
+                if (typeof f.isActive === 'boolean') return f.isActive;
+                const today = new Date().toISOString().slice(0, 10);
+                const byStatus = String(f.status || '').toLowerCase() === 'active';
+                const byDate = (f.startDate && f.endDate)
+                  ? (today >= String(f.startDate).slice(0, 10) && today <= String(f.endDate).slice(0, 10))
+                  : false;
+                return byStatus || byDate;
+              };
               return {
                 id: String(f.id),
                 title: f.title || '',
@@ -182,7 +206,8 @@ const FeedbackGeneration: React.FC = () => {
                 startDate: f.startDate,
                 endDate: f.endDate,
                 targetAudience: 'students',
-                isActive: true,
+                isActive: computeActive(),
+                status: f.status,
                 createdAt: f.createdAt,
                 formLink: (() => {
                   if (!f.slug) return '';
@@ -304,6 +329,15 @@ const FeedbackGeneration: React.FC = () => {
             const subjObj = subjectList.find(x => x.id === sId) || { id: sId, name: `Subject ${sId}` } as Subject;
             const qIdsStr = (f.questionIds || []).map((x: any) => String(x));
             const qObjs = questionList.filter(q => qIdsStr.includes(String(q.id)));
+            const computeActive = (): boolean => {
+              if (typeof f.isActive === 'boolean') return f.isActive;
+              const today = new Date().toISOString().slice(0, 10);
+              const byStatus = String(f.status || '').toLowerCase() === 'active';
+              const byDate = (f.startDate && f.endDate)
+                ? (today >= String(f.startDate).slice(0, 10) && today <= String(f.endDate).slice(0, 10))
+                : false;
+              return byStatus || byDate;
+            };
             return {
               id: String(f.id),
               title: f.title || `${subjObj.name} - ${staffObj.name}`,
@@ -315,7 +349,8 @@ const FeedbackGeneration: React.FC = () => {
               startDate: f.startDate,
               endDate: f.endDate,
               targetAudience: 'students',
-              isActive: true,
+              isActive: computeActive(),
+              status: f.status,
               createdAt: f.createdAt,
               formLink: (() => {
                 if (!f.slug) return '';
@@ -419,6 +454,8 @@ const FeedbackGeneration: React.FC = () => {
 
       const slug: string = res.data?.slug;
       const createdAt: string = res.data?.createdAt || new Date().toISOString();
+      const statusFromApi: string | undefined = res.data?.status || undefined;
+      const isActiveFromApi: boolean | undefined = typeof res.data?.isActive === 'boolean' ? res.data.isActive : undefined;
       const newListedForm: FeedbackForm = {
         id: String(res.data?.id || Date.now()),
         title: newForm.title!,
@@ -430,7 +467,15 @@ const FeedbackGeneration: React.FC = () => {
         startDate: newForm.startDate!,
         endDate: newForm.endDate!,
         targetAudience: newForm.targetAudience!,
-        isActive: true,
+        isActive: (isActiveFromApi !== undefined) ? isActiveFromApi : (() => {
+          const today = new Date().toISOString().slice(0, 10);
+          const byStatus = String(statusFromApi || '').toLowerCase() === 'active';
+          const byDate = (!!newForm.startDate && !!newForm.endDate)
+            ? (today >= newForm.startDate.slice(0, 10) && today <= newForm.endDate.slice(0, 10))
+            : false;
+          return byStatus || byDate;
+        })(),
+        status: statusFromApi,
         createdAt,
         formLink: (() => {
           if (!slug) return '';
@@ -574,7 +619,7 @@ const FeedbackGeneration: React.FC = () => {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Feedback Form Generation</h1>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Feedback Form Generation</h1>
         <button
           onClick={() => setShowCreateForm(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
@@ -585,10 +630,10 @@ const FeedbackGeneration: React.FC = () => {
       </div>
 
       {/* Existing Forms */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Existing Feedback Forms</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6 border border-gray-200 dark:border-gray-700">
+        <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Existing Feedback Forms</h2>
         {loadingForms && (
-          <p className="text-gray-500">Loading forms...</p>
+          <p className="text-gray-500 dark:text-gray-400">Loading forms...</p>
         )}
 
       {/* Edit Form Modal */}
@@ -616,7 +661,7 @@ const FeedbackGeneration: React.FC = () => {
                       type="text"
                       value={editForm.title || ''}
                       onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                      className="w-full p-2 border rounded-lg"
+                      className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 dark:placeholder-gray-300"
                       placeholder="Enter form title"
                     />
                   </div>
@@ -625,7 +670,7 @@ const FeedbackGeneration: React.FC = () => {
                     <select
                       value={editForm.semester || ''}
                       onChange={(e) => setEditForm({ ...editForm, semester: e.target.value })}
-                      className="w-full p-2 border rounded-lg"
+                      className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     >
                       <option value="">Select semester</option>
                       {semesters.map(semester => (
@@ -643,7 +688,7 @@ const FeedbackGeneration: React.FC = () => {
                         setEditForm({ ...editForm, startDate: date ? format(date, 'yyyy-MM-dd') : '' })
                       }
                       dateFormat="yyyy-MM-dd"
-                      className="w-full p-2 border rounded-lg"
+                      className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       placeholderText="Select start date"
                       isClearable
                     />
@@ -656,7 +701,7 @@ const FeedbackGeneration: React.FC = () => {
                         setEditForm({ ...editForm, endDate: date ? format(date, 'yyyy-MM-dd') : '' })
                       }
                       dateFormat="yyyy-MM-dd"
-                      className="w-full p-2 border rounded-lg"
+                      className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       placeholderText="Select end date"
                       minDate={editForm.startDate ? new Date(editForm.startDate) : undefined}
                       isClearable
@@ -668,7 +713,7 @@ const FeedbackGeneration: React.FC = () => {
                   <textarea
                     value={editForm.description || ''}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                    className="w-full p-2 border rounded-lg"
+                    className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 dark:placeholder-gray-300"
                     rows={3}
                     placeholder="Enter form description"
                   />
@@ -678,11 +723,11 @@ const FeedbackGeneration: React.FC = () => {
               {/* Question Selection */}
               <div>
                 <h3 className="text-lg font-semibold mb-3">Select Questions *</h3>
-                <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-4">
+                <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-4 dark:border-gray-600 dark:bg-gray-800/50">
                   {questions.map((question) => {
                     const selected = editForm.questions?.some(q => q.id === question.id) || false;
                     return (
-                      <div key={question.id} className="flex items-start gap-3 p-2 hover:bg-gray-50 rounded">
+                      <div key={question.id} className="flex items-start gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded">
                         <input
                           type="checkbox"
                           checked={selected}
@@ -698,8 +743,8 @@ const FeedbackGeneration: React.FC = () => {
                         <div className="flex-1">
                           <div className="flex justify-between items-start">
                             <div>
-                              <p className="font-medium">{question.text}</p>
-                              <p className="text-sm text-gray-500">Type: {question.type} | {question.required ? 'Required' : 'Optional'}</p>
+                              <p className="font-medium text-gray-900 dark:text-white">{question.text}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-300">Type: {question.type} | {question.required ? 'Required' : 'Optional'}</p>
                             </div>
                           </div>
                         </div>
@@ -714,7 +759,7 @@ const FeedbackGeneration: React.FC = () => {
                 <h3 className="text-lg font-semibold mb-3">Select Subject</h3>
                 <div className="space-y-2">
                   <select
-                    className="w-full p-2 border rounded-lg"
+                    className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     value={(editForm.selectedSubjects && editForm.selectedSubjects[0]?.id) || ''}
                     onChange={(e) => {
                       const id = e.target.value;
@@ -792,10 +837,57 @@ const FeedbackGeneration: React.FC = () => {
         )}
         {!loadingForms && !formsError && forms.length === 0 ? (
           <p className="text-gray-500">No feedback forms created yet.</p>
-        ) : !loadingForms && !formsError ? (
-          <div className="space-y-4">
-            {forms.map((form) => (
-              <div key={form.id} className="border rounded-lg p-4">
+        ) : !formsError && forms.length > 0 ? (
+          <>
+            
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-sm flex-wrap">
+                <span className="px-2 py-1 rounded bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-700/60 dark:text-gray-200 dark:border-gray-600">
+                  Total: {forms.length}
+                </span>
+                <span className="px-2 py-1 rounded bg-green-50 text-green-700 border border-green-200 dark:bg-green-500/20 dark:text-green-300 dark:border-green-400/30">
+                  Active: {activeCount}
+                </span>
+                <span className="px-2 py-1 rounded bg-red-50 text-red-700 border border-red-200 dark:bg-red-500/20 dark:text-red-300 dark:border-red-400/30">
+                  Inactive: {Math.max(0, forms.length - activeCount)}
+                </span>
+                {showOnlyActive && (
+                  <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-400/30">
+                    Showing only active
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {showOnlyActive ? (
+                  <button
+                    onClick={() => {
+                      setShowOnlyActive(false);
+                      const params = new URLSearchParams(location.search);
+                      params.delete('active');
+                      navigate({ search: params.toString() ? `?${params.toString()}` : '' }, { replace: true });
+                    }}
+                    className="text-sm px-3 py-1 border rounded hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+                  >
+                    Show all
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setShowOnlyActive(true);
+                      const params = new URLSearchParams(location.search);
+                      params.set('active', '1');
+                      navigate({ search: `?${params.toString()}` }, { replace: true });
+                    }}
+                    className="text-sm px-3 py-1 border rounded hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+                  >
+                    Show only active
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="space-y-4">
+            {displayedForms.map((form) => (
+              <div key={form.id} className="border rounded-lg p-4 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg">{form.title || `${form.selectedSubjects[0]?.name || 'Subject'} - ${form.selectedStaff[0]?.name || 'Staff'}`}</h3>
@@ -807,8 +899,10 @@ const FeedbackGeneration: React.FC = () => {
                       <span>Subjects: {form.selectedSubjects.length}</span>
                       <span>Semester: {form.semester || form.selectedSubjects[0]?.semester || ''}</span>
                       <span>Audience: {form.targetAudience}</span>
-                      <span className={`px-2 py-1 rounded ${form.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {form.isActive ? 'Active' : 'Inactive'}
+                      <span className={`${'px-2 py-1 rounded border'} ${form.isActive
+                        ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-500/20 dark:text-green-300 dark:border-green-400/30'
+                        : 'bg-red-100 text-red-800 border-red-200 dark:bg-red-500/20 dark:text-red-300 dark:border-red-400/30'}`}>
+                        {form.isActive ? 'Active' : 'Inactive'} ({String(form.isActive)})
                       </span>
                     </div>
                   </div>
@@ -836,7 +930,11 @@ const FeedbackGeneration: React.FC = () => {
                     </button>
                     <button
                       onClick={() => toggleFormStatus(form.id)}
-                      className={`p-2 rounded ${form.isActive ? 'text-orange-600 hover:text-orange-900 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20' : 'text-green-600 hover:text-green-900 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'}`}
+                      className={`p-2 rounded border transition-colors ${
+                        form.isActive
+                          ? 'bg-orange-100 hover:bg-orange-200 border-orange-200 text-orange-700 hover:text-orange-800 dark:bg-orange-500/20 dark:hover:bg-orange-500/30 dark:border-orange-400/30 dark:text-orange-300'
+                          : 'bg-green-100 hover:bg-green-200 border-green-200 text-green-700 hover:text-green-800 dark:bg-green-500/20 dark:hover:bg-green-500/30 dark:border-green-400/30 dark:text-green-300'
+                      }`}
                       title={form.isActive ? 'Deactivate' : 'Activate'}
                     >
                       {form.isActive ? <X size={16} /> : <Plus size={16} />}
@@ -852,7 +950,8 @@ const FeedbackGeneration: React.FC = () => {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          </>
         ) : null}
       </div>
 

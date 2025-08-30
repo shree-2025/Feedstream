@@ -97,6 +97,7 @@ async function initDB() {
 
     await addColumnIfNotExists(pool, 'feedback_forms', 'title', 'title VARCHAR(255) NULL AFTER id');
     await addColumnIfNotExists(pool, 'feedback_forms', 'semester', 'semester VARCHAR(10) NULL AFTER end_date');
+    await addColumnIfNotExists(pool, 'feedback_forms', 'status', "status ENUM('active','inactive') NOT NULL DEFAULT 'active' AFTER slug");
 
     // ---------- SUBJECTS ----------
     await pool.query(`
