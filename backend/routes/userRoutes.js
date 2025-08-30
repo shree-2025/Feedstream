@@ -5,8 +5,12 @@ const path = require('path');
 const fs = require('fs');
 const { authUser, getProfile, updateProfile, uploadAvatar } = require('../controllers/userController.js');
 
-// ensure upload directory exists
-const uploadDir = path.join(__dirname, '..', 'uploads', 'avatars');
+// Determine uploads root (must match server.js static mapping)
+const uploadsRoot = process.env.UPLOAD_DIR && process.env.UPLOAD_DIR.trim().length > 0
+  ? process.env.UPLOAD_DIR
+  : path.join(__dirname, '..', 'uploads');
+// ensure avatar upload directory exists
+const uploadDir = path.join(uploadsRoot, 'avatars');
 fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({

@@ -12,8 +12,11 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve uploaded files from a configurable directory (supports persistent disks in production)
+const uploadsRoot = process.env.UPLOAD_DIR && process.env.UPLOAD_DIR.trim().length > 0
+  ? process.env.UPLOAD_DIR
+  : path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsRoot));
 
 // Serve frontend build (dist) static assets
 const distPath = path.join(__dirname, '..', 'dist');
