@@ -358,6 +358,7 @@ section[id]{scroll-margin-top:80px}
 
 /* Desktop/wide screens: avoid showing inner scrollbars for short sections */
 @media (min-width: 901px){
+  .section-hero{ min-height:auto; overflow:visible }
   .section-testimonials,
   .section-pricing,
   .section-cta{ overflow-y: visible }
