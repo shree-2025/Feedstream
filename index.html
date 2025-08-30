@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FeedStream – Streamline Feedback. Elevate Growth.</title>
+  <meta name="description" content="FeedStream is a premium feedback management system that streamlines feedback and elevates growth with a luxurious, minimal experience." />
+  <meta property="og:title" content="FeedStream – Streamline Feedback. Elevate Growth." />
+  <meta property="og:description" content="A modern, elegant feedback management system with a premium dark theme and glowing green accents." />
+  <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#0b0d0f" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Background visual layers -->
+  <div class="bg">
+    <div class="bg-grid" aria-hidden="true"></div>
+    <div class="bg-radial" aria-hidden="true"></div>
+  </div>
+
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="#" aria-label="FeedStream home">
+        <span class="logo-wrap">
+          <!-- Inline SVG logo with subtle 3D and green glow -->
+          <svg class="logo" viewBox="0 0 64 64" aria-hidden="true" role="img">
+            <defs>
+              <linearGradient id="g-metal" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.6"/>
+                <stop offset="100%" stop-color="#9aa0a6" stop-opacity="0.2"/>
+              </linearGradient>
+              <filter id="f-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="2.5" result="blur" />
+                <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0   0 0 0 0 0.35   0 0 0 0 1   0 0 0 0.8 0"/>
+                <feBlend in="SourceGraphic" mode="screen"/>
+              </filter>
+            </defs>
+            <!-- Stylized stream lines forming an F and S -->
+            <g filter="url(#f-glow)">
+              <path d="M12 18h28a6 6 0 0 1 0 12H24" fill="none" stroke="#465fff" stroke-width="3.5" stroke-linecap="round"/>
+              <path d="M52 46H24a6 6 0 0 1 0-12h16" fill="none" stroke="#465fff" stroke-width="3.5" stroke-linecap="round"/>
+              <circle cx="10" cy="18" r="2" fill="#465fff"/>
+              <circle cx="54" cy="46" r="2" fill="#465fff"/>
+            </g>
+            <rect x="6" y="6" width="52" height="52" rx="12" fill="url(#g-metal)" opacity="0.25" />
+          </svg>
+        </span>
+        <span class="brand-name">FeedStream</span>
+      </a>
+      <button class="nav-toggle magnetic" aria-label="Toggle menu" aria-expanded="false" aria-controls="primaryNav">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </button>
+      <nav class="nav" id="primaryNav">
+        <a href="#features" class="magnetic">Features</a>
+        <a href="#demo" class="magnetic">Demo</a>
+        <a href="#pricing" class="magnetic">Pricing</a>
+        <a href="#testimonials" class="magnetic">Stories</a>
+        <a class="btn btn-primary small mobile-only" href="https://feedstream.onrender.com/signin" rel="noopener">Get Started</a>
+      </nav>
+      <div class="nav-actions">
+        <a class="btn btn-primary small magnetic" href="https://feedstream.onrender.com/signin" rel="noopener">Get Started</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="section-hero container" id="hero">
+      <div class="hero-content" data-animate>
+        <h1 class="hero-title">FeedStream</h1>
+        <p class="hero-tag">Streamline Feedback. Elevate Growth.</p>
+        <div class="hero-actions">
+          <a href="https://feedstream.onrender.com/signin" rel="noopener" class="btn btn-primary magnetic">Start Managing Feedback Smarter</a>
+          <a href="#demo" class="btn btn-ghost magnetic">See the Preview</a>
+        </div>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="orb orb-lg layer" data-depth="0.3"></div>
+        <div class="orb orb-sm layer" data-depth="0.6"></div>
+        <div class="ring layer" data-depth="0.2"></div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="section-features container" id="features">
+      <div class="section-head" data-animate>
+        <h2>Precision-engineered to scale your feedback</h2>
+        <p>Minimal, powerful tools designed with Apple-level polish.</p>
+      </div>
+      <div class="features-grid">
+        <article class="card glass feature magnetic" data-animate>
+          <div class="icon glow">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <h3>Unified Inbox</h3>
+          <p>Capture product, support, and NPS in one streamlined flow.</p>
+        </article>
+        <article class="card glass feature magnetic" data-animate>
+          <div class="icon glow">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12l6 6L21 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>AI Prioritization</h3>
+          <p>Auto-group signals by impact and urgency with clarity.</p>
+        </article>
+        <article class="card glass feature magnetic" data-animate>
+          <div class="icon glow">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V4m0 0l-6 6m6-6l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <h3>Insight Streams</h3>
+          <p>Transform noise into trends with live, glowing dashboards.</p>
+        </article>
+        <article class="card glass feature magnetic" data-animate>
+          <div class="icon glow">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <h3>Seamless Routing</h3>
+          <p>Send the right feedback to the right owners automatically.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- Demo / Preview -->
+    <section class="section-demo container" id="demo">
+      <div class="section-head" data-animate>
+        <h2>Preview the experience</h2>
+        <p>A focused admin dashboard with pages for subject/staff management, question bank, and forms.</p>
+      </div>
+      <div class="demo-frame glass" data-animate aria-label="FeedStream dashboard preview">
+        <button class="demo-menu-toggle magnetic" aria-label="Toggle demo menu" aria-expanded="false" aria-controls="demoSide">☰ Pages</button>
+        <aside class="demo-side" id="demoSide">
+          <div class="demo-user">
+            <div class="avatar-ring small"><img src="https://i.pravatar.cc/60?img=12" alt="Admin avatar"/></div>
+            <div class="user-meta"><strong>Tejas</strong><span>Department Admin</span></div>
+          </div>
+          <nav class="demo-nav">
+            <a class="active" data-page="dashboard"><span class="nav-icon"> 
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/></svg>
+            </span><span>Dashboard</span></a>
+            <a data-page="subjects"><span class="nav-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 10h16" stroke="currentColor" stroke-width="2"/></svg>
+            </span><span>Subject Management</span></a>
+            <a data-page="staff"><span class="nav-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2 20c0-3.3 2.7-6 6-6" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            </span><span>Staff Management</span></a>
+            <a data-page="qbank"><span class="nav-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 8h6M9 12h6M9 16h3" stroke="currentColor" stroke-width="2"/></svg>
+            </span><span>Question Bank</span></a>
+            <a data-page="createform"><span class="nav-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2"/><path d="M18 18l3 3" stroke="currentColor" stroke-width="2"/></svg>
+            </span><span>Create Feedback Form</span></a>
+            <a data-page="responses"><span class="nav-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v10H7l-3 4z" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            </span><span>Feedback Responses</span></a>
+            <a data-page="analytics"><span class="nav-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4" stroke="currentColor" stroke-width="2"/><path d="M6 14l4-6 4 5 4-8" stroke="currentColor" stroke-width="2"/></svg>
+            </span><span>Feedback Analytics</span></a>
+            <a data-page="announcements"><span class="nav-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10h3l4-4v12l-4-4H3zM17 10v4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            </span><span>Announcements</span></a>
+          </nav>
+        </aside>
+        <section class="demo-main">
+          <!-- Dashboard Panel -->
+          <div class="panel active" data-panel="dashboard">
+            <h3>Department Dashboard</h3>
+            <div class="kpis">
+              <div class="kpi glass-sub"><div class="kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6" stroke="currentColor" stroke-width="2" fill="none"/></svg></div><div><p>Total Staff</p><strong>7</strong></div></div>
+              <div class="kpi glass-sub"><div class="kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="12" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2"/></svg></div><div><p>Total Subjects</p><strong>7</strong></div></div>
+              <div class="kpi glass-sub"><div class="kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v10H7l-3 4z" fill="none" stroke="currentColor" stroke-width="2"/></svg></div><div><p>Active Forms</p><strong>3</strong></div></div>
+              <div class="kpi glass-sub"><div class="kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 8h10M7 12h6" stroke="currentColor" stroke-width="2"/></svg></div><div><p>Total Responses</p><strong>2</strong></div></div>
+            </div>
+            <div class="panel-grid">
+              <div class="card glass-sub">
+                <div class="card-head">Feedback Responses Over Time</div>
+                <canvas id="chart-bars" width="400" height="160" aria-label="Bar chart of responses"></canvas>
+              </div>
+              <div class="card glass-sub">
+                <div class="card-head">Response Rate</div>
+                <canvas id="chart-donut" width="220" height="160" aria-label="Response breakdown"></canvas>
+                <div class="legend">
+                  <span class="dot a"></span> Completed: 2%
+                  <span class="dot b"></span> Pending: 4%
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subjects Management -->
+          <div class="panel" data-panel="subjects">
+            <h3>Subjects Management</h3>
+            <div class="toolbar">
+              <button class="chip">All Departments</button>
+              <button class="chip">All Semesters</button>
+              <button class="chip">All Types</button>
+              <button class="chip chip-ghost">Clear Filters</button>
+              <button class="chip action">+ Add Subject</button>
+            </div>
+            <div class="table glass-sub">
+              <div class="row head"><span>Subject</span><span>Code</span><span>Department</span><span>Credits</span><span>Semester</span><span>Actions</span></div>
+              <div class="row"><span>DS</span><span>CS2025</span><span>Computer Science</span><span>5</span><span>4</span><span>👁 ✏️ 🗑</span></div>
+              <div class="row"><span>DBMS</span><span>CS2040</span><span>Computer Science</span><span>4</span><span>4</span><span>👁 ✏️ 🗑</span></div>
+              <div class="row"><span>OS</span><span>CS2030</span><span>Computer Science</span><span>3</span><span>3</span><span>👁 ✏️ 🗑</span></div>
+            </div>
+          </div>
+
+          <!-- Staff Management -->
+          <div class="panel" data-panel="staff">
+            <h3>Staff Management</h3>
+            <div class="toolbar">
+              <input class="search" placeholder="Search by name..." />
+              <button class="chip">All Departments</button>
+              <button class="chip">All Roles</button>
+              <button class="chip">All Statuses</button>
+              <button class="chip chip-ghost">Clear Filters</button>
+              <div class="spacer"></div>
+              <button class="chip action">+ Add Staff</button>
+              <button class="chip">Bulk Add</button>
+            </div>
+            <div class="table glass-sub">
+              <div class="row head"><span>Name</span><span>Email</span><span>Role</span><span>Subject</span><span>Status</span><span>Actions</span></div>
+              <div class="row"><span>Alice Johnson</span><span>alice@example.com</span><span>Professor</span><span>DS</span><span><em>Active</em></span><span>✏️ 🗑</span></div>
+              <div class="row"><span>Bob Smith</span><span>bob@example.com</span><span>Assistant Professor</span><span>DBMS</span><span><em>Active</em></span><span>✏️ 🗑</span></div>
+            </div>
+          </div>
+
+          <!-- Question Bank -->
+          <div class="panel" data-panel="qbank">
+            <h3>Question Bank</h3>
+            <div class="toolbar">
+              <input class="search" placeholder="Search questions..." />
+              <div class="spacer"></div>
+              <button class="chip">Bulk Upload</button>
+              <button class="chip action">+ Add Question</button>
+            </div>
+            <div class="table glass-sub">
+              <div class="row head"><span>Question</span><span>Type</span><span>Category</span><span>Created</span><span>Actions</span></div>
+              <div class="row"><span>How would you rate the course?</span><span>Multiple Choice</span><span>Course</span><span>2025-08-25</span><span>✏️ 🗑</span></div>
+              <div class="row"><span>Any suggestions for improvement?</span><span>Text</span><span>Feedback</span><span>2025-08-26</span><span>✏️ 🗑</span></div>
+            </div>
+          </div>
+
+          <!-- Create Feedback Form -->
+          <div class="panel" data-panel="createform">
+            <h3>Feedback Form Generation</h3>
+            <div class="toolbar">
+              <button class="chip action">+ Create New Form</button>
+            </div>
+            <div class="list glass-sub">
+              <div class="list-item">
+                <div>
+                  <strong>Onboarding UX</strong><br/>
+                  <span>Questions: 6 · Audience: students</span>
+                </div>
+                <div class="badges"><span class="badge ok">Active</span><span class="icons">🔗 ✏️ 🗑</span></div>
+              </div>
+              <div class="list-item">
+                <div>
+                  <strong>Performance Feedback</strong><br/>
+                  <span>Questions: 4 · Audience: students</span>
+                </div>
+                <div class="badges"><span class="badge warn">Inactive</span><span class="icons">🔗 ✏️ 🗑</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Responses -->
+          <div class="panel" data-panel="responses">
+            <h3>Feedback Responses</h3>
+            <div class="toolbar">
+              <input class="search" placeholder="Search by title..." />
+              <button class="chip">All Semesters</button>
+              <button class="chip">All Staff</button>
+              <button class="chip">All Subjects</button>
+              <div class="spacer"></div>
+              <span class="chip chip-ghost">Total responses: 2</span>
+            </div>
+            <div class="table glass-sub">
+              <div class="row head"><span>Form Title</span><span>Teacher</span><span>Subject</span><span>Semester</span><span>Responses</span><span>Actions</span></div>
+              <div class="row"><span>Dolor neque ut delen</span><span>Prof Tejas Bhatkar</span><span>DSGT</span><span>3</span><span><span class="chip small">1</span></span><span><span class="chip primary small">View</span> <span class="chip success small">CSV</span> <em>Open</em></span></div>
+              <div class="row"><span>abc</span><span>prof. Pande</span><span>DS</span><span>4</span><span><span class="chip small">1</span></span><span><span class="chip primary small">View</span> <span class="chip success small">CSV</span> <em>Open</em></span></div>
+            </div>
+          </div>
+
+          <!-- Analytics -->
+          <div class="panel" data-panel="analytics">
+            <h3>Feedback Analytics</h3>
+            <div class="toolbar">
+              <button class="chip">Last 30 days</button>
+              <button class="chip">Filter</button>
+              <div class="spacer"></div>
+              <button class="chip action">Export</button>
+            </div>
+            <div class="kpis">
+              <div class="kpi glass-sub"><div class="kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 8h7" stroke="currentColor" stroke-width="2"/></svg></div><div><p>Total Feedback</p><strong>1,248</strong><br/><span class="subtle">+12.5% from last month</span></div></div>
+              <div class="kpi glass-sub"><div class="kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="none" stroke="currentColor" stroke-width="2"/></svg></div><div><p>Avg. Rating</p><strong>4.5</strong><br/><span class="subtle">+0.2 from last month</span></div></div>
+              <div class="kpi glass-sub"><div class="kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4" stroke="currentColor" stroke-width="2"/><path d="M6 14l4-6 4 5 4-8" stroke="currentColor" stroke-width="2"/></svg></div><div><p>Response Rate</p><strong>78%</strong><br/><span class="subtle">+5% from last month</span></div></div>
+              <div class="kpi glass-sub"><div class="kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 10h8M8 14h6" stroke="currentColor" stroke-width="2"/></svg></div><div><p>Active Courses</p><strong>24</strong><br/><span class="subtle">5 more than last term</span></div></div>
+            </div>
+            <div class="panel-grid">
+              <div class="card glass-sub">
+                <div class="card-head">Rating Distribution</div>
+                <canvas id="chart-analytics-donut" width="260" height="180" aria-label="Rating distribution"></canvas>
+              </div>
+              <div class="card glass-sub">
+                <div class="card-head">Response Trend</div>
+                <canvas id="chart-analytics-bars" width="440" height="180" aria-label="Response trend"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Announcements -->
+          <div class="panel" data-panel="announcements">
+            <h3>Announcements</h3>
+            <div class="list glass-sub">
+              <div class="list-item">
+                <div>
+                  <strong>System maintenance</strong><br/>
+                  <span>Tonight 11 PM–1 AM IST</span>
+                </div>
+                <div class="icons">🔔</div>
+              </div>
+              <div class="list-item">
+                <div>
+                  <strong>New analytics widgets</strong><br/>
+                  <span>Try the latest trends module in Dashboard</span>
+                </div>
+                <div class="icons">✨</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="section-testimonials container" id="testimonials">
+      <div class="section-head" data-animate>
+        <h2>Loved by product teams</h2>
+        <p>Subtle, premium UI. Serious impact.</p>
+      </div>
+      <div class="carousel" data-animate>
+        <button class="carousel-btn prev" aria-label="Previous testimonial">‹</button>
+        <div class="carousel-track" role="region" aria-roledescription="carousel" aria-label="Testimonials">
+          <article class="t-card glass-sub">
+            <header class="t-head">
+              <div class="brand"><img src="https://logo.clearbit.com/stripe.com" alt="Stripe"/><span>Stripe</span></div>
+              <div class="rating" aria-label="5 out of 5">
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+              </div>
+            </header>
+            <blockquote>“FeedStream helped us close the loop on student feedback in days, not months.”</blockquote>
+            <footer class="t-foot"><img class="avatar" src="https://i.pravatar.cc/80?img=36" alt=""/><div><strong>Priya N.</strong><span>Product Lead</span></div></footer>
+          </article>
+          <article class="t-card glass-sub">
+            <header class="t-head">
+              <div class="brand"><img src="https://logo.clearbit.com/linear.app" alt="Linear"/><span>Linear</span></div>
+              <div class="rating" aria-label="5 out of 5">
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+              </div>
+            </header>
+            <blockquote>“The reporting views are clean, fast, and trustworthy for our teams.”</blockquote>
+            <footer class="t-foot"><img class="avatar" src="https://i.pravatar.cc/80?img=22" alt=""/><div><strong>Aditya K.</strong><span>Design Manager</span></div></footer>
+          </article>
+          <article class="t-card glass-sub">
+            <header class="t-head">
+              <div class="brand"><img src="https://logo.clearbit.com/notion.so" alt="Notion"/><span>Notion</span></div>
+              <div class="rating" aria-label="5 out of 5">
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+                <svg viewBox="0 0 24 24" class="star"><path d="M12 17l-5 3 1.9-5.8L4 9.5l6-.3L12 4l2 5.2 6 .3-4.9 4.7L17 20z" fill="currentColor"/></svg>
+              </div>
+            </header>
+            <blockquote>“Delightful UX + actionable analytics. Exactly what we needed.”</blockquote>
+            <footer class="t-foot"><img class="avatar" src="https://i.pravatar.cc/80?img=14" alt=""/><div><strong>Sarah L.</strong><span>Ops</span></div></footer>
+          </article>
+        </div>
+        <button class="carousel-btn next" aria-label="Next testimonial">›</button>
+        <div class="carousel-dots" role="tablist" aria-label="Carousel Pagination"></div>
+      </div>
+    </section>
+
+    <!-- Pricing -->
+    <section class="section-pricing container" id="pricing">
+      <div class="section-head" data-animate>
+        <h2>Simple, transparent pricing</h2>
+        <p>Start free. Scale as you grow.</p>
+        <div class="billing-toggle" role="group" aria-label="Billing period">
+          <span>Monthly</span>
+          <button id="billingToggle" class="switch magnetic" aria-pressed="false"><span class="knob"></span></button>
+          <span>Annual <em class="save">save 20%</em></span>
+        </div>
+      </div>
+      <div class="pricing-grid" data-animate>
+        <div class="plan glass-sub">
+          <h3>Starter</h3>
+          <p class="price"><span class="currency">$</span><span class="amount" data-month="0" data-annual="0">0</span><span class="per" data-month-text="/mo" data-annual-text="/mo billed annually">/mo</span></p>
+          <ul class="features">
+            <li>Up to 2 forms</li>
+            <li>100 responses/month</li>
+            <li>Basic analytics</li>
+          </ul>
+          <a href="https://feedstream.onrender.com/signin" rel="noopener" class="btn btn-primary magnetic" aria-label="Get started with Starter">Get started</a>
+        </div>
+        <div class="plan featured glass-sub glow">
+          <h3>Pro</h3>
+          <div class="ribbon" aria-hidden="true">Save 20%</div>
+          <p class="price"><span class="currency">$</span><span class="amount" data-month="29" data-annual="23">29</span><span class="per" data-month-text="/mo" data-annual-text="/mo billed annually">/mo</span></p>
+          <ul class="features">
+            <li>Unlimited forms</li>
+            <li>10k responses/month</li>
+            <li>Advanced analytics</li>
+            <li>CSV export</li>
+          </ul>
+          <a href="https://feedstream.onrender.com/signin" rel="noopener" class="btn btn-primary magnetic" aria-label="Start Pro plan">Start Pro</a>
+        </div>
+        <div class="plan glass-sub">
+          <h3>Enterprise</h3>
+          <p class="price"><span class="currency">$</span><span class="amount" data-month="99" data-annual="79">99</span><span class="per" data-month-text="/mo" data-annual-text="/mo billed annually">/mo</span></p>
+          <ul class="features">
+            <li>Custom limits</li>
+            <li>SAML SSO</li>
+            <li>Priority support</li>
+            <li>Onboarding & SLA</li>
+          </ul>
+          <button class="btn btn-ghost magnetic">Contact sales</button>
+        </div>
+      </div>
+      
+    </section>
+
+    <!-- Call to Action -->
+    <section class="section-cta container" id="cta">
+      <div class="cta-box glass" data-animate>
+        <h2>Start Managing Feedback Smarter</h2>
+        <p>Experience the premium way to capture, prioritize, and act.</p>
+        <a href="https://feedstream.onrender.com/signin" rel="noopener" class="btn btn-primary btn-large magnetic">Get Started</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer container">
+    <div class="footer-grid">
+      <p>© <span id="year"></span> FeedStream · Product by <strong>Ctronics Infotech Pvt. Ltd.</strong></p>
+      <p>Swanand, Ganesh Colony, Amravati 444605, Maharashtra, India</p>
+      <p>CIN: <strong>U72200MH2020PTC340711</strong></p>
+      <p>
+        <a href="tel:+919823540321">+91 98235 40321</a> ·
+        <a href="tel:+918979456252">+91 89794 56252</a> ·
+        <a href="mailto:info@ctronicsinfotech.in">info@ctronicsinfotech.in</a>
+      </p>
+    </div>
+  </footer>
+  <!-- Custom cursor -->
+  <div class="cursor" id="cursor" aria-hidden="true"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
