@@ -33,6 +33,9 @@
   padding-bottom:16px;
 }
 
+/* Hero should never have an inner scrollbar; let the page scroll instead */
+.section-hero{ overflow-y:visible; overflow-x:hidden }
+
 /* Reduce perceived gaps between adjacent sections */
 .section-testimonials{ padding-bottom:8px }
 .section-pricing{ padding-top:8px; padding-bottom:8px }
