@@ -16,8 +16,8 @@ const PageMeta = ({
 export const AppWrapper = ({ children }: { children: React.ReactNode }) => (
   <HelmetProvider>
     <Helmet>
-      <title>Elogbook</title>
-      <meta name="description" content="Elogbook - Your electronic logbook solution" />
+      <title>Feedstream</title>
+      <meta name="description" content="Feedstream - Your solution" />
     </Helmet>
     {children}
   </HelmetProvider>

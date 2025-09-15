@@ -1,10 +1,35 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import api from "../../utils/api";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, updateUser } = useAuth();
+
+  // Ensure we pull profile avatar/name once after login if not present
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!user) return;
+      if (user.avatarUrl && user.name) return;
+      try {
+        const res = await api.get('/profile');
+        const p = res?.data || {};
+        const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/+$/g, '').replace(/\/$/g, '');
+        const relative = p.avatarUrl || '';
+        const absolute = relative && !relative.startsWith('http') ? `${apiBaseUrl}${relative}` : relative;
+        const finalUrl = absolute || '';
+        const newName = (user.role === 'DepartmentAdmin' || user.role === 'OrganizationAdmin')
+          ? (p.username || user.name)
+          : ([p.firstName, p.lastName].filter(Boolean).join(' ').trim() || p.username || user.name);
+        if (mounted) updateUser({ avatarUrl: finalUrl || user.avatarUrl, name: newName });
+      } catch {}
+    })();
+    return () => { mounted = false; };
+  }, [user?.id]);
 
   function toggleDropdown() {
     setIsOpen(!isOpen);
@@ -19,11 +44,11 @@ export default function UserDropdown() {
         onClick={toggleDropdown}
         className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400"
       >
-        <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
-          <img src="/images/user/owner.jpg" alt="User" />
+        <span className="mr-3 overflow-hidden rounded-full h-11 w-11 bg-gray-100">
+          <img src={user?.avatarUrl || '/images/user/owner.jpg'} alt={user?.name || 'User'} className="h-full w-full object-cover" />
         </span>
 
-        <span className="block mr-1 font-medium text-theme-sm">Musharof</span>
+        <span className="block mr-1 font-medium text-theme-sm">{user?.name || 'User'}</span>
         <svg
           className={`stroke-gray-500 dark:stroke-gray-400 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
@@ -51,10 +76,10 @@ export default function UserDropdown() {
       >
         <div>
           <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
-            Musharof Chowdhury
+            {user?.name || 'User'}
           </span>
           <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
-            randomuser@pimjo.com
+            {user?.email || ''}
           </span>
         </div>
 
@@ -88,7 +113,7 @@ export default function UserDropdown() {
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
-              to="/profile"
+              to="/account-settings"
               className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
             >
               <svg
@@ -113,7 +138,7 @@ export default function UserDropdown() {
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
-              to="/profile"
+              to="/support"
               className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
             >
               <svg

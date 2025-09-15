@@ -57,7 +57,8 @@ export default function SignInForm() {
         setError("Invalid credentials. Please try again.");
       }
     } catch (err) {
-      setError("An error occurred. Please try again.");
+      const message = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -161,12 +162,9 @@ export default function SignInForm() {
             </button>
           </div>
 
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md dark:bg-blue-900/20 dark:border-blue-800">
-            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-2">Demo Credentials:</p>
-            <p className="text-xs text-blue-600 dark:text-blue-400">
-              • Email: Any email (e.g., admin@test.com)<br/>
-              • Password: Any password (e.g., password123)<br/>
-              • Select your desired role to access that dashboard
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md dark:bg-yellow-900/20 dark:border-yellow-800">
+            <p className="text-xs text-yellow-700 dark:text-yellow-300">
+              Authentication now uses the backend API. Use valid credentials for the selected role.
             </p>
           </div>
         </div>

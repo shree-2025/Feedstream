@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
 import NotFound from "./pages/OtherPage/NotFound";
+import FeedbackFormPublic from "./pages/public/FeedbackFormPublic";
 import AppLayout from "./layout/AppLayout";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
@@ -11,12 +12,18 @@ import OrganizationAdminDashboard from "./pages/organization-admin/OrganizationA
 import StaffDashboard from "./pages/staff/StaffDashboard";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import DepartmentAdminDashboard from "./pages/department-admin/DepartmentAdminDashboard";
+import Subjects from "./pages/department-admin/Subjects";
+import QuestionBank from "./pages/department-admin/QuestionBank";
+import FeedbackGeneration from "./pages/department-admin/FeedbackGeneration";
+import FeedbackResponses from "./pages/department-admin/FeedbackResponses";
+import FeedbackAnalytics from "./pages/department-admin/FeedbackAnalytics";
 
 // Management Pages
 import OrganizationManagement from "./pages/master-admin/OrganizationManagement";
 import DepartmentManagement from "./pages/organization-admin/DepartmentManagement";
 import DepartmentSingleView from "./pages/organization-admin/DepartmentSingleView";
 import GenerateReport from "./pages/organization-admin/GenerateReport";
+import FeedbackActivity from "./pages/organization-admin/FeedbackActivity";
 import StaffManagement from "./pages/department-admin/StaffManagement";
 import DeptAdminAnnouncements from "./pages/department-admin/Announcements";
 import SubmitActivity from "./pages/department-admin/SubmitActivity";
@@ -27,6 +34,9 @@ import ViewStudentLogs from "./pages/staff/ViewStudentLogs";
 import SubmitStaffActivity from "./pages/staff/SubmitStaffActivity";
 import ManageAnnouncements from "./pages/staff/ManageAnnouncements";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
+import Support from "./pages/Support";
+import AccountSettings from "./pages/AccountSettings";
 
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import { UserProvider } from "./context/UserContext";
@@ -34,6 +44,8 @@ import { LogProvider } from "./context/LogContext";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { Toaster } from 'react-hot-toast';
+import ChangePassword from './pages/AuthPages/ChangePassword';
+import { NotificationProvider } from "./context/NotificationContext";
 
 export default function App() {
   return (
@@ -41,6 +53,7 @@ export default function App() {
       <Toaster position="top-right" reverseOrder={false} />
       <ThemeProvider>
         <AuthProvider>
+        <NotificationProvider>
         <UserProvider>
           <LogProvider>
             <Router>
@@ -49,6 +62,22 @@ export default function App() {
                 {/* Public Routes */}
                 <Route path="/signin" element={<SignIn />} />
                 <Route path="/signup" element={<SignUp />} />
+                {/* Public Feedback Form (shareable link) */}
+                <Route path="/feedback/:slug" element={<FeedbackFormPublic />} />
+                {/* Public SIMPLE form (feedback_master) */}
+                <Route path="/feedback/public/simple/:slug" element={<FeedbackFormPublic />} />
+                {/* Backward/alternate public paths supported by some links */}
+                <Route path="/feedback/public/form/:slug" element={<FeedbackFormPublic />} />
+                <Route path="/api/feedback/public/form/:slug" element={<FeedbackFormPublic />} />
+                {/* Handle cases where share URL accidentally includes /api prefix for SIMPLE */}
+                <Route path="/api/feedback/public/simple/:slug" element={<FeedbackFormPublic />} />
+
+                {/* Force password change route (must be authenticated) */}
+                <Route path="/change-password" element={
+                  <ProtectedRoute>
+                    <ChangePassword />
+                  </ProtectedRoute>
+                } />
 
                 {/* Protected Routes Layout */}
                 <Route element={
@@ -93,6 +122,11 @@ export default function App() {
                       <GenerateReport />
                     </ProtectedRoute>
                   } />
+                  <Route path="/organization-admin/feedback-activity" element={
+                    <ProtectedRoute allowedRoles={['OrganizationAdmin']}>
+                      <FeedbackActivity />
+                    </ProtectedRoute>
+                  } />
 
                   {/* Department Admin Routes */}
                   <Route path="/department-admin/dashboard" element={
@@ -113,6 +147,31 @@ export default function App() {
                   <Route path="/department-admin/submit-activity" element={
                     <ProtectedRoute allowedRoles={['DepartmentAdmin']}>
                       <SubmitActivity />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/department-admin/subjects" element={
+                    <ProtectedRoute allowedRoles={['DepartmentAdmin']}>
+                      <Subjects />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/department-admin/question-bank" element={
+                    <ProtectedRoute allowedRoles={['DepartmentAdmin']}>
+                      <QuestionBank />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/department-admin/feedback/generate" element={
+                    <ProtectedRoute allowedRoles={['DepartmentAdmin']}>
+                      <FeedbackGeneration />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/department-admin/feedback/responses" element={
+                    <ProtectedRoute allowedRoles={['DepartmentAdmin']}>
+                      <FeedbackResponses />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/department-admin/reports" element={
+                    <ProtectedRoute allowedRoles={['DepartmentAdmin']}>
+                      <FeedbackAnalytics />
                     </ProtectedRoute>
                   } />
 
@@ -166,6 +225,21 @@ export default function App() {
                       <Settings />
                     </ProtectedRoute>
                   } />
+                  <Route path="/account-settings" element={
+                    <ProtectedRoute>
+                      <AccountSettings />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/profile" element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/support" element={
+                    <ProtectedRoute>
+                      <Support />
+                    </ProtectedRoute>
+                  } />
                 </Route>
                 
                 {/* Fallback Routes */}
@@ -174,6 +248,7 @@ export default function App() {
             </Router>
           </LogProvider>
         </UserProvider>
+        </NotificationProvider>
       </AuthProvider>
       </ThemeProvider>
     </>

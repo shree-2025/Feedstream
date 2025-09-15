@@ -1,15 +1,77 @@
+import { useEffect, useState } from "react";
 import { useModal } from "../../hooks/useModal";
 import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
+import api from "../../utils/api";
+import toast from "react-hot-toast";
 
 export default function UserMetaCard() {
   const { isOpen, openModal, closeModal } = useModal();
-  const handleSave = () => {
-    // Handle save logic here
-    console.log("Saving changes...");
-    closeModal();
+
+  const [profile, setProfile] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    bio: "",
+    facebook: "",
+    twitter: "",
+    linkedin: "",
+    instagram: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Load profile when modal opens
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const { data } = await api.get("/profile");
+        setProfile({
+          firstName: data.firstName || "",
+          lastName: data.lastName || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          bio: data.bio || "",
+          facebook: data.facebook || "",
+          twitter: data.twitter || "",
+          linkedin: data.linkedin || "",
+          instagram: data.instagram || "",
+        });
+      } catch (e: any) {
+        // If profile not found, we keep defaults
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (isOpen) load();
+  }, [isOpen]);
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const { data } = await api.put("/profile", profile);
+      setProfile({
+        firstName: data.firstName || "",
+        lastName: data.lastName || "",
+        email: data.email || "",
+        phone: data.phone || "",
+        bio: data.bio || "",
+        facebook: data.facebook || "",
+        twitter: data.twitter || "",
+        linkedin: data.linkedin || "",
+        instagram: data.instagram || "",
+      });
+      toast.success("Profile saved");
+      closeModal();
+    } catch (e: any) {
+      toast.error(e?.message || e?.error || "Failed to save profile");
+    } finally {
+      setSaving(false);
+    }
   };
   return (
     <>
@@ -164,26 +226,30 @@ export default function UserMetaCard() {
                     <Label>Facebook</Label>
                     <Input
                       type="text"
-                      value="https://www.facebook.com/PimjoHQ"
+                      value={profile.facebook}
+                      disabled={loading || saving}
+                      onChange={(e: any) => setProfile(p => ({ ...p, facebook: e.target.value }))}
                     />
                   </div>
 
                   <div>
                     <Label>X.com</Label>
-                    <Input type="text" value="https://x.com/PimjoHQ" />
+                    <Input type="text" value={profile.twitter} disabled={loading || saving} onChange={(e: any) => setProfile(p => ({ ...p, twitter: e.target.value }))} />
                   </div>
 
                   <div>
                     <Label>Linkedin</Label>
                     <Input
                       type="text"
-                      value="https://www.linkedin.com/company/pimjo"
+                      value={profile.linkedin}
+                      disabled={loading || saving}
+                      onChange={(e: any) => setProfile(p => ({ ...p, linkedin: e.target.value }))}
                     />
                   </div>
 
                   <div>
                     <Label>Instagram</Label>
-                    <Input type="text" value="https://instagram.com/PimjoHQ" />
+                    <Input type="text" value={profile.instagram} disabled={loading || saving} onChange={(e: any) => setProfile(p => ({ ...p, instagram: e.target.value }))} />
                   </div>
                 </div>
               </div>
@@ -195,27 +261,27 @@ export default function UserMetaCard() {
                 <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                   <div className="col-span-2 lg:col-span-1">
                     <Label>First Name</Label>
-                    <Input type="text" value="Musharof" />
+                    <Input type="text" value={profile.firstName} disabled={loading || saving} onChange={(e: any) => setProfile(p => ({ ...p, firstName: e.target.value }))} />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Last Name</Label>
-                    <Input type="text" value="Chowdhury" />
+                    <Input type="text" value={profile.lastName} disabled={loading || saving} onChange={(e: any) => setProfile(p => ({ ...p, lastName: e.target.value }))} />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Email Address</Label>
-                    <Input type="text" value="randomuser@pimjo.com" />
+                    <Input type="text" value={profile.email} disabled={loading || saving} onChange={(e: any) => setProfile(p => ({ ...p, email: e.target.value }))} />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Phone</Label>
-                    <Input type="text" value="+09 363 398 46" />
+                    <Input type="text" value={profile.phone} disabled={loading || saving} onChange={(e: any) => setProfile(p => ({ ...p, phone: e.target.value }))} />
                   </div>
 
                   <div className="col-span-2">
                     <Label>Bio</Label>
-                    <Input type="text" value="Team Manager" />
+                    <Input type="text" value={profile.bio} disabled={loading || saving} onChange={(e: any) => setProfile(p => ({ ...p, bio: e.target.value }))} />
                   </div>
                 </div>
               </div>
@@ -224,8 +290,8 @@ export default function UserMetaCard() {
               <Button size="sm" variant="outline" onClick={closeModal}>
                 Close
               </Button>
-              <Button size="sm" onClick={handleSave}>
-                Save Changes
+              <Button size="sm" onClick={handleSave} disabled={saving || loading}>
+                {saving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </form>

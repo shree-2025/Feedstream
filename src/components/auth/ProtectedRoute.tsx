@@ -20,6 +20,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
+  // Force password change before accessing any protected route except the change-password page
+  if (user?.requiresPasswordChange && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
+
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     // User doesn't have permission, redirect to their appropriate dashboard
     const dashboardRoutes: Record<UserRole, string> = {

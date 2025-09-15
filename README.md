@@ -1,6 +1,6 @@
-# ctronics infotech - ElogBook
+# Feedstream
 
-This project is a comprehensive **Medical E-log Book** designed for medical colleges and hospitals. It provides a data-driven dashboard and administrative panel for managing patients, staff, departments, and medical activities.
+This project is a comprehensive **Feedstream** application. It provides a data-driven dashboard and administrative panel for managing content and activities.
 
 Built with a modern tech stack, this application offers a feature-rich interface to streamline administrative tasks and track activities within a medical institution.
 

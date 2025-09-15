@@ -1,298 +1,163 @@
-import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Edit, Trash2 } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHeader, TableRow } from '../../components/ui/table';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { ChevronLeft } from 'lucide-react';
 import Button from '../../components/ui/button/Button';
-import Tooltip from '../../components/ui/tooltip/Tooltip';
-import { useModal } from '../../hooks/useModal';
-import { Modal } from '../../components/ui/modal';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-
-import { departments, allStaff, allStudents, allActivityLogs, Staff, Student, ActivityLog } from '../../data/mockData';
 
 const DepartmentSingleView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const department = departments.find(d => d.id === id);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [department, setDepartment] = useState<{ id: string; name: string; managerName: string; email: string } | null>(null);
+  const [subjects, setSubjects] = useState<Array<{ id: string; name: string; code?: string; semester?: string; credits?: number; type?: string; instructor?: string }>>([]);
+  const [subjectsLoading, setSubjectsLoading] = useState<boolean>(false);
+  const [subjectsError, setSubjectsError] = useState<string | null>(null);
 
-  // Filter data based on department ID
-  const departmentStaff = allStaff.filter(s => s.departmentId === id);
-  const departmentStudents = allStudents.filter(s => s.departmentId === id);
-  const departmentLogs = allActivityLogs.filter(l => l.departmentId === id);
+  const API_BASE = useMemo(() => (import.meta.env.VITE_API_URL || 'http://localhost:4000') as string, []);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('elog_token') : null;
 
-  // Staff State
-  const [staff, setStaff] = useState<Staff[]>(departmentStaff);
-  const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
-  const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
+  useEffect(() => {
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE}/org/departments`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+        if (!res.ok) throw new Error('Failed to load departments');
+        const list = await res.json();
+        const found = (list || []).find((d: any) => String(d.id) === String(id));
+        if (!found) {
+          setDepartment(null);
+          setError('Department not found.');
+        } else {
+          setDepartment({ id: String(found.id), name: found.name, managerName: found.managerName || '', email: found.email });
+        }
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load department');
+      } finally {
+        setLoading(false);
+      }
+    };
+    run();
+  }, [API_BASE, token, id]);
 
-  // Student State
-  const [students, setStudents] = useState<Student[]>(departmentStudents);
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
-  const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
-
-  // Activity Logs State
-  const [activityLogs] = useState<ActivityLog[]>(departmentLogs);
-
-  // Modals
-  const { isOpen: isEditStaffModalOpen, openModal: openEditStaffModal, closeModal: closeEditStaffModal } = useModal();
-  const { isOpen: isDeleteStaffConfirmOpen, openModal: openDeleteStaffConfirm, closeModal: closeDeleteStaffConfirm } = useModal();
-  const { isOpen: isEditStudentModalOpen, openModal: openEditStudentModal, closeModal: closeEditStudentModal } = useModal();
-  const { isOpen: isDeleteStudentConfirmOpen, openModal: openDeleteStudentConfirm, closeModal: closeDeleteStudentConfirm } = useModal();
-
-  // Input change handlers
-  const handleStaffInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setEditingStaff(prev => ({ ...prev!, [name]: value }));
-  };
-
-  const handleStudentInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setEditingStudent(prev => ({ ...prev!, [name]: value }));
-  };
-
-  // Staff CRUD
-  const handleUpdateStaff = () => {
-    if (editingStaff) {
-      setStaff(prev => prev.map(s => s.id === editingStaff.id ? editingStaff : s));
-    }
-    closeEditStaffModal();
-  };
-
-  const handleDeleteStaffClick = (s: Staff) => {
-    setDeletingStaff(s);
-    openDeleteStaffConfirm();
-  };
-
-  const handleConfirmDeleteStaff = () => {
-    if (deletingStaff) {
-      setStaff(prev => prev.filter(s => s.id !== deletingStaff.id));
-    }
-    closeDeleteStaffConfirm();
-  };
-
-  // Student CRUD
-  const handleUpdateStudent = () => {
-    if (editingStudent) {
-      setStudents(prev => prev.map(s => s.id === editingStudent.id ? editingStudent : s));
-    }
-    closeEditStudentModal();
-  };
-
-  const handleDeleteStudentClick = (s: Student) => {
-    setDeletingStudent(s);
-    openDeleteStudentConfirm();
-  };
-
-  const handleConfirmDeleteStudent = () => {
-    if (deletingStudent) {
-      setStudents(prev => prev.filter(s => s.id !== deletingStudent.id));
-    }
-    closeDeleteStudentConfirm();
-  };
-
-  if (!department) {
-    return <div>Department not found.</div>;
-  }
+  // Load subjects for this department (visible to ORG)
+  useEffect(() => {
+    const run = async () => {
+      if (!id) return;
+      setSubjectsLoading(true);
+      setSubjectsError(null);
+      try {
+        const url = `${API_BASE}/api/subjects?department=${encodeURIComponent(String(id))}&limit=100`;
+        const res = await fetch(url, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+        if (!res.ok) throw new Error('Failed to load subjects');
+        const data = await res.json();
+        const items = Array.isArray(data?.items) ? data.items : [];
+        const mapped = items.map((s: any) => ({
+          id: String(s.id),
+          name: s.name,
+          code: s.code,
+          semester: s.semester,
+          credits: s.credits,
+          type: s.type,
+          instructor: s.instructor,
+        }));
+        setSubjects(mapped);
+      } catch (e: any) {
+        setSubjectsError(e?.message || 'Failed to load subjects');
+      } finally {
+        setSubjectsLoading(false);
+      }
+    };
+    run();
+  }, [API_BASE, token, id]);
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Manage: {department.name}</h1>
-        <p className="text-gray-600 dark:text-gray-400">Head of Department: {department.hod}</p>
+      <div className="flex items-center gap-3">
+        <Link to="/organization-admin/departments"><Button variant="outline" size="icon" aria-label="Back"><ChevronLeft className="h-4 w-4" /></Button></Link>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Department</h1>
       </div>
 
-      {/* Staff Management */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Staff Details</h2>
-        </div>
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableCell className="font-semibold text-gray-900 dark:text-white p-4">Staff Name</TableCell>
-                <TableCell className="font-semibold text-gray-900 dark:text-white p-4">Role</TableCell>
-                <TableCell className="font-semibold text-gray-900 dark:text-white p-4">Assigned Students</TableCell>
-                <TableCell className="text-right font-semibold text-gray-900 dark:text-white p-4">Actions</TableCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {staff.map(s => (
-                <React.Fragment key={s.id}>
-                  <TableRow>
-                    <TableCell className="p-4 text-gray-900 dark:text-gray-300">{s.name}</TableCell>
-                    <TableCell className="p-4 text-gray-600 dark:text-gray-400">{s.role}</TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm" onClick={() => setExpandedStaffId(expandedStaffId === s.id ? null : s.id)}>
-                        {s.studentIds.length} Students
-                      </Button>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end items-center gap-2 flex-wrap">
-                        <Tooltip text="Edit Staff">
-                          <Button variant="outline" size="icon" onClick={() => { setEditingStaff(s); openEditStaffModal(); }}>
-                            <Edit className="h-5 w-5" />
-                          </Button>
-                        </Tooltip>
-                        <Tooltip text="Delete Staff">
-                          <Button variant="destructive" size="icon" onClick={() => handleDeleteStaffClick(s)}>
-                            <Trash2 className="h-5 w-5" />
-                          </Button>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  {expandedStaffId === s.id && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="p-4">
-                        <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                          <h4 className="font-bold mb-2">Assigned Students</h4>
-                          <ul className="list-disc pl-5">
-                            {s.studentIds.map(studentId => {
-                              const student = allStudents.find(stud => stud.id === studentId);
-                              return <li key={studentId}>{student ? student.name : 'Unknown Student'}</li>;
-                            })}
-                          </ul>
+      {loading && (
+        <div className="p-4 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-white">Loading...</div>
+      )}
+      {error && !loading && (
+        <div className="p-4 rounded-md border border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">{error}</div>
+      )}
+
+      {department && !loading && (
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{department.name}</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300">HOD: {department.managerName || '—'}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Email: {department.email}</p>
+            </div>
+          </div>
+
+          {/* Subjects Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Subjects</h3>
+              <span className="text-xs px-2 py-1 rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300">{subjects.length} total</span>
+            </div>
+
+            {subjectsLoading && (
+              <div className="p-3 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 text-gray-700 dark:text-gray-200">Loading subjects...</div>
+            )}
+            {subjectsError && !subjectsLoading && (
+              <div className="p-3 rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300">{subjectsError}</div>
+            )}
+
+            {!subjectsLoading && !subjectsError && (
+              subjects.length ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {subjects.map(s => (
+                    <div key={s.id} className="group rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-sm hover:shadow-md transition-all">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{s.code || '—'}</div>
+                          <h4 className="text-base font-semibold text-gray-900 dark:text-white">{s.name}</h4>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </React.Fragment>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      {/* Student Management */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Student Details</h2>
-        </div>
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableCell className="font-semibold text-gray-900 dark:text-white p-4">Student Name</TableCell>
-                <TableCell className="font-semibold text-gray-900 dark:text-white p-4">Registration No.</TableCell>
-                <TableCell className="text-right font-semibold text-gray-900 dark:text-white p-4">Actions</TableCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {students.map(s => (
-                <TableRow key={s.id}>
-                  <TableCell className="p-4 text-gray-900 dark:text-gray-300">{s.name}</TableCell>
-                  <TableCell className="p-4 text-gray-600 dark:text-gray-400">{s.regNo}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end items-center gap-2 flex-wrap">
-                    <Tooltip text="Edit">
-                      <Button variant="outline" size="icon" onClick={() => { setEditingStudent(s); openEditStudentModal(); }}><Edit className="h-4 w-4" /></Button>
-                    </Tooltip>
-                    <Tooltip text="Delete">
-                      <Button variant="destructive" size="icon" onClick={() => handleDeleteStudentClick(s)}><Trash2 className="h-4 w-4" /></Button>
-                    </Tooltip>
+                        {s.type && (
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-700/40">{s.type}</span>
+                        )}
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
+                        <div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Semester</div>
+                          <div>{s.semester || '—'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Credits</div>
+                          <div>{s.credits ?? '—'}</div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Instructor</div>
+                          <div>{s.instructor || '—'}</div>
+                        </div>
+                      </div>
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      {/* Activity Logs Overview */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Activity Logs Overview</h2>
-        </div>
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableCell className="font-semibold">Submitted By</TableCell>
-                <TableCell className="font-semibold">Activity</TableCell>
-                <TableCell className="font-semibold">Date</TableCell>
-                <TableCell className="text-right font-semibold">Status</TableCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {activityLogs.map(log => (
-                <TableRow key={log.id}>
-                  <TableCell>{log.submittedBy}</TableCell>
-                  <TableCell>{log.activity}</TableCell>
-                  <TableCell>{log.date}</TableCell>
-                  <TableCell className="text-right">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      log.status === 'Approved' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
-                      log.status === 'Pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' :
-                      'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                    }`}>
-                      {log.status}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      <Modal isOpen={isEditStaffModalOpen} onClose={closeEditStaffModal} title="Edit Staff">
-        {editingStaff && (
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="editStaffName">Staff Name</Label>
-              <Input id="editStaffName" name="name" value={editingStaff.name} onChange={handleStaffInputChange} />
-            </div>
-            <div>
-              <Label htmlFor="editStaffRole">Role</Label>
-              <Input id="editStaffRole" name="role" value={editingStaff.role} onChange={handleStaffInputChange} />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={closeEditStaffModal}>Cancel</Button>
-              <Button onClick={handleUpdateStaff}>Update Staff</Button>
-            </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 text-center text-sm text-gray-600 dark:text-gray-300">No subjects found for this department.</div>
+              )
+            )}
           </div>
-        )}
-      </Modal>
-
-      <Modal isOpen={isDeleteStaffConfirmOpen} onClose={closeDeleteStaffConfirm} title="Confirm Delete">
-        <p>Are you sure you want to delete {deletingStaff?.name}?</p>
-        <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={closeDeleteStaffConfirm}>Cancel</Button>
-          <Button variant="destructive" onClick={handleConfirmDeleteStaff}>Delete</Button>
         </div>
-      </Modal>
-
-      {editingStudent && (
-        <Modal isOpen={isEditStudentModalOpen} onClose={closeEditStudentModal} title={`Edit ${editingStudent.name}`}>
-          <form className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 sm:grid-cols-4 items-start sm:items-center gap-2 sm:gap-4">
-              <Label htmlFor="student-name" className="sm:text-right">Name</Label>
-              <Input id="student-name" name="name" value={editingStudent.name} onChange={handleStudentInputChange} className="sm:col-span-3" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 items-start sm:items-center gap-2 sm:gap-4">
-              <Label htmlFor="student-regNo" className="sm:text-right">Reg. No.</Label>
-              <Input id="student-regNo" name="regNo" value={editingStudent.regNo} onChange={handleStudentInputChange} className="sm:col-span-3" />
-            </div>
-            <div className="flex justify-end space-x-2 mt-4">
-              <Button variant="outline" onClick={closeEditStudentModal}>Cancel</Button>
-              <Button onClick={handleUpdateStudent}>Save Changes</Button>
-            </div>
-          </form>
-        </Modal>
       )}
 
-      {deletingStudent && (
-        <Modal isOpen={isDeleteStudentConfirmOpen} onClose={closeDeleteStudentConfirm} title="Confirm Deletion">
-          <p>Are you sure you want to delete <strong>{deletingStudent.name}</strong>?</p>
-          <div className="flex justify-end space-x-2 mt-4">
-            <Button variant="outline" onClick={closeDeleteStudentConfirm}>Cancel</Button>
-            <Button variant="destructive" onClick={handleConfirmDeleteStudent}>Delete</Button>
-          </div>
-        </Modal>
-      )}
+      {/* Placeholder for further details (staff/students) once endpoints are wired */}
     </div>
   );
 };

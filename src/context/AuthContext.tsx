@@ -7,6 +7,8 @@ interface User {
   name: string;
   email: string;
   role: UserRole;
+  requiresPasswordChange?: boolean;
+  avatarUrl?: string;
 }
 
 interface AuthContextType {
@@ -15,42 +17,18 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   loading: boolean; // Add loading state
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Dummy users for different roles
-const dummyUsers: Record<UserRole, User> = {
-  MasterAdmin: {
-    id: '1',
-    name: 'Master Administrator',
-    email: 'master@elog.com',
-    role: 'MasterAdmin',
-  },
-  OrganizationAdmin: {
-    id: '2',
-    name: 'Organization Admin',
-    email: 'org-admin@elog.com',
-    role: 'OrganizationAdmin',
-  },
-  DepartmentAdmin: {
-    id: '3',
-    name: 'Department Admin',
-    email: 'dept-admin@elog.com',
-    role: 'DepartmentAdmin',
-  },
-  Staff: {
-    id: '4',
-    name: 'Staff Member',
-    email: 'staff@elog.com',
-    role: 'Staff',
-  },
-  Student: {
-    id: '5',
-    name: 'Student',
-    email: 'user@elog.com',
-    role: 'Student',
-  },
+// Map frontend role to backend endpoint
+const roleToEndpoint: Record<UserRole, string | null> = {
+  MasterAdmin: null, // not implemented on backend yet
+  OrganizationAdmin: '/auth/org/login',
+  DepartmentAdmin: '/auth/department/login',
+  Staff: '/auth/staff/login',
+  Student: null, // not implemented on backend yet
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -58,33 +36,80 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true); // Initialize loading to true
 
   const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Simple dummy authentication - any password works
-    if (email && password) {
-      const selectedUser = dummyUsers[role];
-      setUser(selectedUser);
-      localStorage.setItem('elog_user', JSON.stringify(selectedUser));
-      return true;
+    const endpoint = roleToEndpoint[role];
+    if (!endpoint) {
+      throw new Error('Selected role is not supported for login yet');
     }
-    return false;
+
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+    const url = `${base}${endpoint}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!res.ok) {
+      return false;
+    }
+    const data = await res.json();
+    const token: string | undefined = data?.token;
+    const apiUser = data?.user as { id: number | string; email: string; name?: string; role?: string };
+    const requirePasswordChange: boolean = !!data?.requirePasswordChange;
+
+    if (!token || !apiUser) return false;
+
+    // Map backend role to frontend role if needed
+    const mappedRole: UserRole =
+      role === 'OrganizationAdmin' ? 'OrganizationAdmin' :
+      role === 'DepartmentAdmin' ? 'DepartmentAdmin' :
+      role === 'Staff' ? 'Staff' : role;
+
+    const normalizedUser: User = {
+      id: String(apiUser.id),
+      name: apiUser.name || '',
+      email: apiUser.email,
+      role: mappedRole,
+      requiresPasswordChange: requirePasswordChange,
+    };
+
+    setUser(normalizedUser);
+    localStorage.setItem('elog_user', JSON.stringify(normalizedUser));
+    localStorage.setItem('elog_token', token);
+    return true;
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('elog_user');
+    localStorage.removeItem('elog_token');
+  };
+
+  const updateUser = (updates: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...updates } as User;
+      try {
+        localStorage.setItem('elog_user', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
   };
 
   // Check for existing user on mount
   React.useEffect(() => {
     const savedUser = localStorage.getItem('elog_user');
+    const token = localStorage.getItem('elog_token');
     try {
-      if (savedUser) {
+      if (savedUser && token) {
         setUser(JSON.parse(savedUser));
+      } else {
+        localStorage.removeItem('elog_user');
+        localStorage.removeItem('elog_token');
       }
     } catch (error) {
       localStorage.removeItem('elog_user');
+      localStorage.removeItem('elog_token');
     } finally {
       setLoading(false); // Set loading to false after checking
     }
@@ -96,6 +121,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     logout,
     isAuthenticated: !!user,
     loading,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

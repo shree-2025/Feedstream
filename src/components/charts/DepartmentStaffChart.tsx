@@ -28,7 +28,13 @@ const DepartmentStaffChart: React.FC<DepartmentStaffChartProps> = ({ data }) => 
             }}
           >
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
+            <XAxis
+              dataKey="name"
+              interval={0}
+              angle={-20}
+              textAnchor="end"
+              height={60}
+            />
             <YAxis />
             <Tooltip />
             <Legend />

@@ -5,10 +5,13 @@ import {
   ChevronDownIcon,
   Settings as SettingsIcon,
   Briefcase as OrganizationIcon,
-  Users as DepartmentIcon,
+  Users,
   FileText as LogIcon,
   Megaphone as MegaphoneIcon,
-  ClipboardList as ReportIcon,
+  ClipboardList,
+  FileQuestion,
+  BookOpen,
+  BarChart3,
 } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
@@ -44,38 +47,64 @@ const navItems: NavItem[] = [
   },
   {
     name: "Departments",
-    icon: <DepartmentIcon />,
+    icon: <Users className="w-5 h-5" />,
     path: "/organization-admin/departments",
     roles: ["OrganizationAdmin"],
   },
   {
     name: "Generate Report",
-    icon: <ReportIcon />,
+    icon: <ClipboardList className="w-5 h-5" />,
     path: "/organization-admin/generate-report",
     roles: ["OrganizationAdmin"],
   },
   {
-    name: "Department Admin Dashboard",
+    name: "Dashboard",
     icon: <GridIcon />,
     path: "/department-admin/dashboard",
     roles: ["DepartmentAdmin"],
   },
   {
+    name: "Subjects",
+    icon: <BookOpen className="w-5 h-5" />,
+    path: "/department-admin/subjects",
+    roles: ["DepartmentAdmin"],
+  },
+  {
     name: "Staff Management",
-    icon: <DepartmentIcon />,
+    icon: <Users className="w-5 h-5" />,
     path: "/department-admin/staff",
+    roles: ["DepartmentAdmin"],
+  },
+  {
+    name: "Question Bank",
+    icon: <FileQuestion className="w-5 h-5" />,
+    path: "/department-admin/question-bank",
+    roles: ["DepartmentAdmin"],
+  },
+  // Feedback: flatten dropdown into two direct links
+  {
+    name: "Generate Feedback",
+    icon: <ClipboardList className="w-5 h-5" />,
+    path: "/department-admin/feedback/generate",
+    roles: ["DepartmentAdmin"],
+  },
+  {
+    name: "Feedback Responses",
+    icon: <ClipboardList className="w-5 h-5" />,
+    path: "/department-admin/feedback/responses",
+    roles: ["DepartmentAdmin"],
+  },
+ 
+  {
+    name: "Feedback Analytics",
+    icon: <BarChart3 className="w-5 h-5" />,
+    path: "/department-admin/reports",
     roles: ["DepartmentAdmin"],
   },
   {
     name: "Announcements",
     icon: <MegaphoneIcon />,
     path: "/department-admin/announcements",
-    roles: ["DepartmentAdmin"],
-  },
-  {
-    name: "Submit Activity",
-    icon: <LogIcon />,
-    path: "/department-admin/submit-activity",
     roles: ["DepartmentAdmin"],
   },
   {
@@ -86,7 +115,7 @@ const navItems: NavItem[] = [
   },
   {
     name: "Student Management",
-    icon: <DepartmentIcon />,
+    icon: <Users className="w-5 h-5" />,
     path: "/staff/student-management",
     roles: ["Staff"],
   },
@@ -286,12 +315,12 @@ const AppSidebar: React.FC = () => {
     <>
       {/* Mobile Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-screen transition-transform duration-300 bg-white dark:bg-gray-800 dark:border-r dark:border-gray-700 w-64 lg:hidden ${
+        className={`fixed top-0 left-0 z-60 h-screen transition-transform duration-300 bg-white dark:bg-gray-800 dark:border-r dark:border-gray-700 w-64 lg:hidden ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-center h-20 border-b dark:border-gray-700">
+          <div className="flex items-center justify-center h-16 border-b dark:border-gray-700">
             <Link to="/" className="flex items-center space-x-2">
               <img 
                 src={theme === 'dark' ? '/images/logo/logo-dark.svg' : '/images/logo/logo.svg'} 
@@ -304,11 +333,15 @@ const AppSidebar: React.FC = () => {
           {user && (
             <div className="px-4 py-3 border-b dark:border-gray-700">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-brand-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {user.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
+                ) : (
+                  <div className="w-8 h-8 bg-brand-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-sm font-medium">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                     {user.name}
@@ -320,7 +353,7 @@ const AppSidebar: React.FC = () => {
               </div>
             </div>
           )}
-          <nav className="h-full px-4 pb-4 mt-8">
+          <nav className="h-full px-4 pb-4 mt-4">
             <div className="flex flex-col justify-between h-full">
               <div>
                 <h3 className="menu-title dark:text-white">Menu</h3>
@@ -344,7 +377,7 @@ const AppSidebar: React.FC = () => {
         onMouseLeave={() => setIsHovered(false)}
       >
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-center h-20 border-b dark:border-gray-700">
+          <div className="flex items-center justify-center h-16 border-b dark:border-gray-700">
             <Link to="/" className="flex items-center space-x-2">
               <img
                 src={theme === 'dark' ? '/images/logo/logo-dark.svg' : '/images/logo/logo.svg'}
@@ -358,11 +391,15 @@ const AppSidebar: React.FC = () => {
           {user && (isExpanded || isHovered) && (
             <div className="px-4 py-3 border-b dark:border-gray-700">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-brand-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {user.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
+                ) : (
+                  <div className="w-8 h-8 bg-brand-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-sm font-medium">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                     {user.name}
@@ -374,7 +411,7 @@ const AppSidebar: React.FC = () => {
               </div>
             </div>
           )}
-          <nav className="h-full px-4 pb-4 mt-8">
+          <nav className="h-full px-4 pb-4 mt-4">
             <div className="flex flex-col justify-between h-full">
               <div>
                 <h3 className="menu-title dark:text-white">Menu</h3>

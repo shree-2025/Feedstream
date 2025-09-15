@@ -188,6 +188,10 @@ layer(base);
   body {
     @apply relative font-normal font-outfit z-1 bg-gray-50;
   }
+  /* Force all text to white in dark mode across the app */
+  .dark :where(body, body *) {
+    color: #ffffff !important;
+  }
 }
 
 @utility menu-item {
