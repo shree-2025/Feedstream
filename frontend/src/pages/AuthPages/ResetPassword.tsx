@@ -38,6 +38,8 @@ const ResetPassword: React.FC = () => {
     Staff: 'STAFF',
   };
 
+  // (removed unused helpers)
+
   const onChangeOtp = (index: number, value: string) => {
     if (!/^[0-9]?$/.test(value)) return;
     const next = [...otp];
