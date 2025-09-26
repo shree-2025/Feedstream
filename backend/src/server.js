@@ -19,9 +19,19 @@ const app = express();
 getPool();
 
 const PORT = process.env.PORT || 4000;
-const ORIGIN = process.env.FRONTEND_ORIGIN || '*';
+const ORIGIN_RAW = process.env.FRONTEND_ORIGIN || '*';
+// Support comma-separated list of origins: "http://localhost:5173,http://localhost:5174"
+const ORIGIN_LIST = ORIGIN_RAW.split(',').map((s) => s.trim()).filter(Boolean);
 
-app.use(cors({ origin: ORIGIN, credentials: true }));
+app.use(
+  cors({
+    // If '*', reflect the request origin to support credentials during local dev
+    origin: ORIGIN_LIST.length === 1 && ORIGIN_LIST[0] === '*'
+      ? true
+      : ORIGIN_LIST,
+    credentials: true,
+  })
+);
 // Increase body size limits to support base64 uploads and larger JSON payloads
 app.use(express.json({ limit: '8mb' }));
 app.use(express.urlencoded({ extended: true, limit: '8mb' }));

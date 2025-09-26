@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Download, Users, Star, FileText } from 'lucide-react';
 import api from '../../utils/api';
+import DatePicker from 'react-datepicker';
+import { format } from 'date-fns';
+import 'react-datepicker/dist/react-datepicker.css';
 
 type Analytics = {
   totalResponses: number;
@@ -30,6 +33,26 @@ const FeedbackAnalytics: React.FC = () => {
   const [staffId, setStaffId] = useState<string>('');
   const [subjectId, setSubjectId] = useState<string>('');
   const [semester, setSemester] = useState<string>('');
+
+  // Prevent typing more than 4 digits in the year portion of the date input
+  const limitYearInput: React.KeyboardEventHandler<HTMLElement> = (e) => {
+    const key = e.key;
+    const isDigit = key >= '0' && key <= '9';
+    if (!isDigit) return; // only constrain digits
+    const input = e.target as HTMLInputElement | null;
+    if (!input) return;
+    const start = (input as any).selectionStart ?? 0;
+    const end = (input as any).selectionEnd ?? start;
+    const val = input.value || '';
+    const hyphen = val.indexOf('-');
+    const yearPart = hyphen === -1 ? val : val.slice(0, hyphen);
+    const yearDigits = (yearPart.match(/\d/g) || []).length;
+    const inYear = (hyphen === -1) ? true : end <= hyphen;
+    const replacingCount = Math.max(0, end - start);
+    if (inYear && yearDigits - replacingCount >= 4) {
+      e.preventDefault();
+    }
+  };
 
   // Load filter options once
   useEffect(() => {
@@ -131,8 +154,25 @@ const FeedbackAnalytics: React.FC = () => {
           <p className="text-sm text-gray-500 dark:text-gray-400">Insights and trends from student feedback</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-          <input type="date" value={from} onChange={(e)=>setFrom(e.target.value)} className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 dark:bg-gray-800" />
-          <input type="date" value={to} onChange={(e)=>setTo(e.target.value)} className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 dark:bg-gray-800" />
+          <DatePicker
+            selected={from ? new Date(from) : null}
+            onChange={(date: Date | null) => setFrom(date ? format(date, 'yyyy-MM-dd') : '')}
+            dateFormat="yyyy-MM-dd"
+            className="input-field"
+            placeholderText="Select start date"
+            onKeyDown={limitYearInput}
+            isClearable
+          />
+          <DatePicker
+            selected={to ? new Date(to) : null}
+            onChange={(date: Date | null) => setTo(date ? format(date, 'yyyy-MM-dd') : '')}
+            dateFormat="yyyy-MM-dd"
+            className="input-field"
+            placeholderText="Select end date"
+            minDate={from ? new Date(from) : undefined}
+            onKeyDown={limitYearInput}
+            isClearable
+          />
           <select value={semester} onChange={(e)=>{ setSemester(e.target.value); setSubjectId(''); }} className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 dark:bg-gray-800">
             <option value="">All Semesters</option>
             {allSemesters.map(s => <option key={s} value={s}>{s}</option>)}

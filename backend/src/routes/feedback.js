@@ -1098,6 +1098,42 @@ export default function feedbackRouter() {
     res.json({ ok: true });
   });
 
+  // Update only dates for SIMPLE form (partial update)
+  router.patch('/simple/forms/:id/dates', requireAuth(['DEPT']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const { startDate, endDate } = req.body || {};
+      if (!startDate && !endDate) {
+        return res.status(400).json({ message: 'At least one of startDate or endDate is required' });
+      }
+      // Ownership check
+      const ex = await query(`SELECT id, start_date AS startDate, end_date AS endDate FROM feedback_master WHERE id = ? AND organization_id = ? AND department_id = ?`, [id, req.user.orgId || 0, req.user.departmentId || 0]);
+      if (!ex.length) return res.status(404).json({ message: 'Form not found' });
+
+      // Compose new values
+      const curr = ex[0];
+      const nextStart = startDate ? String(startDate).slice(0,10) : (curr.startDate ? String(curr.startDate).slice(0,10) : null);
+      const nextEnd = endDate ? String(endDate).slice(0,10) : (curr.endDate ? String(curr.endDate).slice(0,10) : null);
+      if (nextStart && nextEnd && nextStart > nextEnd) {
+        return res.status(400).json({ message: 'startDate must be on or before endDate' });
+      }
+
+      // Build update SQL
+      const sets = [];
+      const params = [];
+      if (startDate !== undefined) { sets.push('start_date = ?'); params.push(nextStart); }
+      if (endDate !== undefined) { sets.push('end_date = ?'); params.push(nextEnd); }
+      if (!sets.length) return res.json({ ok: true });
+      params.push(id);
+      await query(`UPDATE feedback_master SET ${sets.join(', ')} WHERE id = ?`, params);
+      const row = await query(`SELECT id, title, semester, description, start_date AS startDate, end_date AS endDate, is_active AS isActive, share_url AS shareUrl FROM feedback_master WHERE id = ?`, [id]);
+      res.json(row[0] || { ok: true });
+    } catch (e) {
+      console.error('update dates failed', e);
+      res.status(500).json({ message: 'Failed to update dates' });
+    }
+  });
+
   // Delete form
   router.delete('/forms/:id', requireAuth(['DEPT']), async (req, res) => {
     const id = parseInt(req.params.id, 10);
@@ -1392,15 +1428,29 @@ export default function feedbackRouter() {
 
   router.post('/simple/forms/:id/publish', requireAuth(['DEPT']), async (req, res) => {
     const id = parseInt(req.params.id, 10);
-    const fm = await query(`SELECT id, access_code AS accessCode FROM feedback_master WHERE id = ? AND organization_id = ? AND department_id = ?`, [id, req.user.orgId || 0, req.user.departmentId || 0]);
+    const { active } = req.body || {};
+    const fm = await query(`SELECT id, access_code AS accessCode, share_url AS shareUrl FROM feedback_master WHERE id = ? AND organization_id = ? AND department_id = ?`, [id, req.user.orgId || 0, req.user.departmentId || 0]);
     if (!fm.length) return res.status(404).json({ message: 'Form not found' });
-    const accessCode = fm[0].accessCode || Math.random().toString(36).slice(2, 10).toUpperCase();
-    // Always prefer frontend origin so the link opens the React page, not the JSON endpoint
-    const base = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
-    // Point share URL to the SIMPLE public route in the SPA
-    const url = `${base.replace(/\/$/, '')}/feedback/public/simple/${accessCode}`;
-    await query(`UPDATE feedback_master SET is_active = 1, access_code = ?, share_url = ? WHERE id = ?`, [accessCode, url, id]);
-    res.json({ ok: true, accessCode, url });
+
+    const wantActive = typeof active === 'boolean' ? active : true;
+    let accessCode = fm[0].accessCode;
+    let url = fm[0].shareUrl;
+
+    // Generate access code and URL if activating and missing
+    if (wantActive && !accessCode) {
+      accessCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+      const base = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+      url = `${base.replace(/\/$/, '')}/feedback/public/simple/${accessCode}`;
+    }
+
+    if (wantActive) {
+      await query(`UPDATE feedback_master SET is_active = 1, access_code = COALESCE(?, access_code), share_url = COALESCE(?, share_url) WHERE id = ?`, [accessCode || null, url || null, id]);
+    } else {
+      // Deactivate but keep link persisted for history; simply flip the active flag
+      await query(`UPDATE feedback_master SET is_active = 0 WHERE id = ?`, [id]);
+    }
+
+    res.json({ ok: true, accessCode, url, isActive: wantActive ? 1 : 0 });
   });
 
   // Public SIMPLE: fetch a feedback_master form by access code (no auth)

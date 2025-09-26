@@ -1,10 +1,12 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
+import ResetPassword from "./pages/AuthPages/ResetPassword";
 import NotFound from "./pages/OtherPage/NotFound";
 import FeedbackFormPublic from "./pages/public/FeedbackFormPublic";
 import AppLayout from "./layout/AppLayout";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import Subjects from "./pages/department-admin/Subjects";
 
 // Role-Based Dashboards
 import MasterAdminDashboard from "./pages/master-admin/MasterAdminDashboard";
@@ -12,7 +14,6 @@ import OrganizationAdminDashboard from "./pages/organization-admin/OrganizationA
 import StaffDashboard from "./pages/staff/StaffDashboard";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import DepartmentAdminDashboard from "./pages/department-admin/DepartmentAdminDashboard";
-import Subjects from "./pages/department-admin/Subjects";
 import QuestionBank from "./pages/department-admin/QuestionBank";
 import FeedbackGeneration from "./pages/department-admin/FeedbackGeneration";
 import FeedbackResponses from "./pages/department-admin/FeedbackResponses";
@@ -23,7 +24,7 @@ import OrganizationManagement from "./pages/master-admin/OrganizationManagement"
 import DepartmentManagement from "./pages/organization-admin/DepartmentManagement";
 import DepartmentSingleView from "./pages/organization-admin/DepartmentSingleView";
 import GenerateReport from "./pages/organization-admin/GenerateReport";
-import FeedbackActivity from "./pages/organization-admin/FeedbackActivity";
+
 import StaffManagement from "./pages/department-admin/StaffManagement";
 import DeptAdminAnnouncements from "./pages/department-admin/Announcements";
 import SubmitActivity from "./pages/department-admin/SubmitActivity";
@@ -62,6 +63,7 @@ export default function App() {
                 {/* Public Routes */}
                 <Route path="/signin" element={<SignIn />} />
                 <Route path="/signup" element={<SignUp />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 {/* Public Feedback Form (shareable link) */}
                 <Route path="/feedback/:slug" element={<FeedbackFormPublic />} />
                 {/* Public SIMPLE form (feedback_master) */}
@@ -120,11 +122,6 @@ export default function App() {
                   <Route path="/organization-admin/generate-report" element={
                     <ProtectedRoute allowedRoles={['OrganizationAdmin']}>
                       <GenerateReport />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/organization-admin/feedback-activity" element={
-                    <ProtectedRoute allowedRoles={['OrganizationAdmin']}>
-                      <FeedbackActivity />
                     </ProtectedRoute>
                   } />
 

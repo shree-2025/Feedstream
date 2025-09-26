@@ -1,8 +1,10 @@
 import React from 'react';
 import Button from '../components/ui/button/Button';
 import { User, Shield, Bell } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Settings: React.FC = () => {
+  const navigate = useNavigate();
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
@@ -16,7 +18,7 @@ const Settings: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             Update your personal information, profile picture, and contact details.
           </p>
-          <Button variant="outline">Edit Profile</Button>
+          <Button variant="outline" onClick={() => navigate('/profile')}>Edit Profile</Button>
         </div>
 
         {/* Security Settings Card */}
@@ -28,7 +30,7 @@ const Settings: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             Change your password, set up two-factor authentication, and manage your sessions.
           </p>
-          <Button variant="outline">Manage Security</Button>
+          <Button variant="outline" onClick={() => navigate('/account-settings')}>Manage Security</Button>
         </div>
 
         {/* Notification Settings Card */}
@@ -40,7 +42,17 @@ const Settings: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             Choose how you receive notifications about your account and activity.
           </p>
-          <Button variant="outline">Manage Notifications</Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              // Dispatch a global event for the header to open the notifications dropdown
+              try {
+                window.dispatchEvent(new CustomEvent('open-notifications-dropdown'));
+              } catch {}
+            }}
+          >
+            Manage Notifications
+          </Button>
         </div>
       </div>
     </div>

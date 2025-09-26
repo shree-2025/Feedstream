@@ -32,6 +32,111 @@ export default function authRouter() {
     res.json({ token, user: { id, role: 'ORG', email, name: name || '' } });
   });
 
+  // PUBLIC: Request OTP for password reset via email (no auth)
+  router.post('/password/forgot-public', async (req, res) => {
+    const schema = z.object({
+      role: z.enum(['DEPT', 'STAFF', 'ORG']),
+      email: z.string().email(),
+    });
+    const parse = schema.safeParse(req.body);
+    if (!parse.success) return res.status(400).json({ error: parse.error.flatten() });
+    const { role, email: rawEmail } = parse.data;
+    const email = rawEmail.trim().toLowerCase();
+    try {
+      let userRow = null;
+      if (role === 'DEPT') {
+        const rows = await query('SELECT id, email FROM departments WHERE email = ?', [email]);
+        userRow = rows[0];
+      } else if (role === 'STAFF') {
+        const rows = await query('SELECT id, email FROM staff WHERE email = ?', [email]);
+        userRow = rows[0];
+      } else if (role === 'ORG') {
+        const rows = await query('SELECT id, email FROM organizations WHERE email = ?', [email]);
+        userRow = rows[0];
+      }
+      // To avoid account enumeration, respond success even if not found, but do not send email
+      if (!userRow) {
+        return res.json({ ok: true });
+      }
+      const otp = String(Math.floor(100000 + Math.random() * 900000));
+      const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      await query('INSERT INTO password_otps (user_role, user_id, email, otp_code, expires_at) VALUES (?, ?, ?, ?, ?)', [role, userRow.id, email, otp, expires]);
+      try {
+        const mail = await sendMail({
+          to: email,
+          subject: 'Your OTP to reset password',
+          text: `Your OTP is ${otp}. It will expire in 10 minutes.`,
+        });
+        if (!mail.queued) {
+          console.warn('[mail] failed to queue OTP email (public):', mail.error || 'unknown');
+        }
+      } catch (e) {
+        console.warn('[mail] error sending OTP (public):', e?.message || e);
+      }
+      return res.json({ ok: true });
+    } catch (e) {
+      console.error('forgot-public failed', e);
+      return res.status(500).json({ error: 'Failed to process request' });
+    }
+  });
+
+  // PUBLIC: Verify OTP and reset password (no auth)
+  router.post('/password/reset-public', async (req, res) => {
+    const schema = z.object({
+      role: z.enum(['DEPT', 'STAFF', 'ORG']),
+      email: z.string().email(),
+      otp: z.string().min(4),
+      newPassword: z.string().min(6),
+    });
+    const parse = schema.safeParse(req.body);
+    if (!parse.success) return res.status(400).json({ error: parse.error.flatten() });
+    const { role, email: rawEmail, otp, newPassword } = parse.data;
+    const email = rawEmail.trim().toLowerCase();
+    try {
+      // Find user id by role + email
+      let userId = 0;
+      let updateSql = '';
+      let updateArgs = [];
+      if (role === 'DEPT') {
+        const rows = await query('SELECT id FROM departments WHERE email = ?', [email]);
+        if (!rows.length) return res.status(400).json({ error: 'Account not found' });
+        userId = rows[0].id;
+        updateSql = 'UPDATE departments SET password_hash = ? WHERE id = ?';
+      } else if (role === 'STAFF') {
+        const rows = await query('SELECT id FROM staff WHERE email = ?', [email]);
+        if (!rows.length) return res.status(400).json({ error: 'Account not found' });
+        userId = rows[0].id;
+        updateSql = 'UPDATE staff SET password_hash = ? WHERE id = ?';
+      } else if (role === 'ORG') {
+        const rows = await query('SELECT id FROM organizations WHERE email = ?', [email]);
+        if (!rows.length) return res.status(400).json({ error: 'Account not found' });
+        userId = rows[0].id;
+        updateSql = 'UPDATE organizations SET password_hash = ? WHERE id = ?';
+      }
+
+      // Latest unused OTP for this role+user
+      const [row] = await query(
+        `SELECT id, otp_code AS code, expires_at AS expires, used FROM password_otps
+         WHERE user_role = ? AND user_id = ?
+         ORDER BY id DESC LIMIT 1`,
+        [role, userId]
+      );
+      if (!row) return res.status(400).json({ error: 'OTP not found. Please request a new one.' });
+      if (row.used) return res.status(400).json({ error: 'OTP already used. Please request a new one.' });
+      if (new Date(row.expires) < new Date()) return res.status(400).json({ error: 'OTP expired. Please request a new one.' });
+      if (String(row.code) !== String(otp)) return res.status(400).json({ error: 'Invalid OTP' });
+
+      const hash = await bcrypt.hash(newPassword, 10);
+      updateArgs = [hash, userId];
+      await query(updateSql, updateArgs);
+      await query('UPDATE password_otps SET used = 1 WHERE id = ?', [row.id]);
+      return res.json({ ok: true });
+    } catch (e) {
+      console.error('reset-public failed', e);
+      return res.status(500).json({ error: 'Failed to reset password' });
+    }
+  });
+
   // Organization login
   router.post('/org/login', async (req, res) => {
     const parse = credsSchema.pick({ email: true, password: true }).safeParse(req.body);

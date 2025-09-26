@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import api from '../utils/api';
 
 export type UserRole = 'MasterAdmin' | 'OrganizationAdmin' | 'DepartmentAdmin' | 'Staff' | 'Student';
 
@@ -41,18 +42,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw new Error('Selected role is not supported for login yet');
     }
 
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-    const url = `${base}${endpoint}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!res.ok) {
+    // Use centralized Axios client (baseURL already includes /api)
+    // So '/auth/...' becomes `${VITE_API_URL}/api/auth/...`
+    let data: any;
+    try {
+      const res = await api.post(endpoint, { email, password });
+      data = res.data;
+    } catch (err: any) {
+      // Normalize to boolean failure for the caller, while allowing error message display upstream
+      const message = err?.message || 'Login failed';
+      console.error('[login] error:', message);
       return false;
     }
-    const data = await res.json();
+
     const token: string | undefined = data?.token;
     const apiUser = data?.user as { id: number | string; email: string; name?: string; role?: string };
     const requirePasswordChange: boolean = !!data?.requirePasswordChange;

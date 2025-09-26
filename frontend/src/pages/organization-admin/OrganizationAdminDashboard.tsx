@@ -268,7 +268,7 @@ const OrganizationAdminDashboard: React.FC = () => {
   const totalStaff = orgStaffCount || 0;
   const totalFeedback = orgFeedbackCount || 0;
 
-  const stats = [
+  const stats: Array<{ title: string; value: string; icon: React.ReactNode; link?: string }> = [
     {
       title: 'Total Departments',
       value: totalDepartments.toString(),
@@ -283,7 +283,6 @@ const OrganizationAdminDashboard: React.FC = () => {
       title: 'Total Feedback',
       value: totalFeedback.toString(),
       icon: <Notebook className="h-8 w-8 text-yellow-500" />,
-      link: '/organization-admin/feedback-activity',
     },
     {
       title: 'Analytics Overview',

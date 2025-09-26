@@ -82,6 +82,10 @@ const StaffManagement: React.FC = () => {
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
 
+  // Build absolute URL for downloads so it doesn't hit the Vite dev server (which would 404)
+  const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/+$/, '');
+  const staffTemplateUrl = `${apiBaseUrl}/api/staff/template.csv`;
+
   const fetchStaff = async (opts?: { search?: string; order?: string; page?: number; limit?: number; sortBy?: string; department?: string; role?: string; status?: string }) => {
     setLoadingList(true);
     try {
@@ -457,9 +461,9 @@ const StaffManagement: React.FC = () => {
             </code>
             <div className="mt-2">
               <a
-                href="/api/staff/template.csv"
+                href={staffTemplateUrl}
                 className="text-xs text-blue-700 dark:text-blue-300 hover:underline"
-                target="_blank" rel="noreferrer"
+                target="_blank" rel="noreferrer" download
               >
                 Download CSV template
               </a>
