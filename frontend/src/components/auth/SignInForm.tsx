@@ -21,8 +21,6 @@ export default function SignInForm() {
   const roleOptions = [
     { value: "OrganizationAdmin", label: "Organization Admin" },
     { value: "DepartmentAdmin", label: "Department Admin" },
-    { value: "Staff", label: "Staff" },
-    { value: "Student", label: "Student" },
   ];
 
   const handleRoleChange = (value: string) => {
@@ -65,12 +63,26 @@ export default function SignInForm() {
   };
 
   return (
-    <div className="w-full max-w-xs">
+    <div className="w-full max-w-sm p-6 bg-white border border-gray-200 rounded-2xl shadow-theme-lg dark:bg-gray-900 dark:border-gray-800">
       <div className="mb-3 text-center">
-        <h1 className="font-semibold text-gray-800 dark:text-white" style={{ fontSize: '35px' }}>
+        <div className="flex justify-center mb-3">
+          {/* Light mode logo */}
+          <img
+            src="/images/logo/logo.svg"
+            alt="Feedstream logo"
+            className="h-18 w-auto block dark:hidden"
+          />
+          {/* Dark mode logo */}
+          <img
+            src="/images/logo/logo-dark.svg"
+            alt="Feedstream logo"
+            className="h-18 w-auto hidden dark:block"
+          />
+        </div>
+        <h3 className="font-semibold text-gray-800 dark:text-white" style={{ fontSize: '35px' }}>
           Sign In
-        </h1>
-        <p className="text-xs text-gray-500 dark:text-gray-400" style={{ fontSize: '20px' }}>
+        </h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400" style={{ fontSize: '15px' }}>
           Welcome back
         </p>
       </div>
@@ -162,25 +174,11 @@ export default function SignInForm() {
             </button>
           </div>
 
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md dark:bg-yellow-900/20 dark:border-yellow-800">
-            <p className="text-xs text-yellow-700 dark:text-yellow-300">
-              Authentication now uses the backend API. Use valid credentials for the selected role.
-            </p>
-          </div>
+          {/* Info notice removed as requested */}
         </div>
       </form>
 
-      <div className="mt-5">
-        <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
-          Don&apos;t have an account?{" "}
-          <Link
-            to="/signup"
-            className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
-          >
-            Sign Up
-          </Link>
-        </p>
-      </div>
+      {/* Sign-up link removed as requested */}
     </div>
   );
 }

@@ -9,6 +9,27 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { toast } from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+  // Prevent typing more than 4 digits in the year portion of the date input
+  const limitYearInput: React.KeyboardEventHandler<HTMLElement> = (e) => {
+    const key = e.key;
+    const isDigit = key >= '0' && key <= '9';
+    if (!isDigit) return; // only constrain digits
+    const input = e.target as HTMLInputElement | null;
+    if (!input) return;
+    const start = (input as any).selectionStart ?? 0;
+    const end = (input as any).selectionEnd ?? start;
+    const val = input.value || '';
+    const hyphen = val.indexOf('-');
+    const yearPart = hyphen === -1 ? val : val.slice(0, hyphen);
+    const yearDigits = (yearPart.match(/\d/g) || []).length;
+    // If cursor/selection is fully within the year part and there are already 4 digits, block extra digits
+    const inYear = (hyphen === -1) ? true : end <= hyphen;
+    const replacingCount = Math.max(0, end - start);
+    if (inYear && yearDigits - replacingCount >= 4) {
+      e.preventDefault();
+    }
+  };
+
 interface Question {
   id: string;
   text: string;
@@ -62,9 +83,12 @@ const FeedbackGeneration: React.FC = () => {
 
   const [forms, setForms] = useState<FeedbackForm[]>([]);
   const [loadingForms, setLoadingForms] = useState(false);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [formsError, setFormsError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  // Date adjust modal when activating an expired/incomplete form
+  const [dateAdjustFor, setDateAdjustFor] = useState<FeedbackForm | null>(null);
+  const [dateAdjust, setDateAdjust] = useState<{ start: string; end: string }>({ start: '', end: '' });
+  const [dateAdjustNextActive] = useState<boolean>(true);
 
   // Filter: show only active forms when coming from dashboard (?active=1)
   const [showOnlyActive, setShowOnlyActive] = useState<boolean>(false);
@@ -366,6 +390,50 @@ const FeedbackGeneration: React.FC = () => {
     { value: 'staff', label: 'Staff' },
   ];
 
+  // Helper: reload forms list from server and map to UI shape
+  const refreshForms = React.useCallback(async () => {
+    try {
+      const formsRes = await api.get('/feedback/simple/forms', { params: { page: 1, limit: 100 } });
+      const items = (formsRes.data?.items || []) as Array<any>;
+      const mapped: FeedbackForm[] = items.map((f) => {
+        const tId = String((Array.isArray(f.staffIds) && f.staffIds[0] != null) ? f.staffIds[0] : '');
+        const sId = String((Array.isArray(f.subjectIds) && f.subjectIds[0] != null) ? f.subjectIds[0] : '');
+        const staffObj = staff.find(x => x.id === tId) || (tId ? { id: tId, name: `Staff ${tId}` } as Staff : { id: '', name: '' } as Staff);
+        const subjObj = subjects.find(x => x.id === sId) || (sId ? { id: sId, name: `Subject ${sId}` } as Subject : { id: '', name: '' } as Subject);
+        const qIdsStr = (Array.isArray(f.questions) ? f.questions : []).map((x: any) => String(typeof x === 'object' ? x.id : x));
+        const qObjs = questions.filter(q => qIdsStr.includes(String(q.id)));
+        const computeActive = (): boolean => {
+          if (typeof f.isActive === 'boolean') return f.isActive;
+          const today = new Date().toISOString().slice(0, 10);
+          const byStatus = String(f.status || '').toLowerCase() === 'active';
+          const byDate = (f.startDate && f.endDate)
+            ? (today >= String(f.startDate).slice(0, 10) && today <= String(f.endDate).slice(0, 10))
+            : false;
+          return byStatus || byDate;
+        };
+        return {
+          id: String(f.id),
+          title: f.title || `${subjObj.name} - ${staffObj.name}`,
+          description: f.description || '',
+          questions: qObjs,
+          selectedStaff: staffObj.id ? [staffObj] : [],
+          selectedSubjects: subjObj.id ? [subjObj] : [],
+          semester: String(f.semester || ''),
+          startDate: f.startDate,
+          endDate: f.endDate,
+          targetAudience: 'students',
+          isActive: computeActive(),
+          status: f.status,
+          createdAt: f.createdAt,
+          formLink: f.shareUrl || '',
+        } as FeedbackForm;
+      });
+      setForms(mapped);
+    } catch (e) {
+      // ignore refresh errors; keep current list
+    }
+  }, [staff, subjects, questions]);
+
   // Derived: Subjects filtered by semester only
   const filteredSubjects = React.useMemo(() => {
     let list = subjects;
@@ -497,6 +565,8 @@ const FeedbackGeneration: React.FC = () => {
           toast.success('Form published');
         }
       } catch {}
+      // Ensure UI reflects latest
+      await refreshForms();
 
     } catch (e: any) {
       console.error('Failed to create feedback form', e);
@@ -583,6 +653,9 @@ const FeedbackGeneration: React.FC = () => {
         title: (editForm.title ?? f.title) as string,
         description: (editForm.description ?? f.description) as string,
       } : f));
+      // Fetch fresh data so UI reflects any backend-side changes immediately
+      await refreshForms();
+      toast.success('Changes saved');
       setShowEditForm(false);
     } catch (e: any) {
       console.error('Failed to update feedback form', e);
@@ -590,43 +663,29 @@ const FeedbackGeneration: React.FC = () => {
     }
   };
 
-  const toggleFormStatus = async (formId: string) => {
-    const current = forms.find(f => f.id === formId);
-    if (!current) return;
-    const nextActive = !current.isActive;
-    // Optimistic update
-    setForms(prev => prev.map(f => (f.id === formId ? { ...f, isActive: nextActive } : f)));
+  
+
+  // Apply date adjustment and then toggle active/inactive
+  const applyDateAdjustAndActivate = async () => {
+    const f = dateAdjustFor;
+    if (!f) return;
+    const formId = f.id;
     try {
-      setTogglingId(formId);
-      await api.post(`/feedback/simple/forms/${encodeURIComponent(formId)}/publish`, { active: nextActive });
-      toast.success(nextActive ? 'Form activated' : 'Form deactivated');
-      // Refresh from server to fully sync
-      try {
-        const resp = await api.get('/feedback/simple/forms', { params: { page: 1, limit: 100 } });
-        const items = resp?.data?.items || [];
-        const fresh = items.find((it: any) => String(it.id) === String(formId));
-        if (fresh) {
-          setForms(prev => prev.map(f => (
-            f.id === String(formId)
-              ? {
-                  ...f,
-                  isActive: typeof fresh.isActive === 'boolean' ? fresh.isActive : f.isActive,
-                  status: fresh.status ?? f.status,
-                  formLink: fresh.shareUrl || f.formLink,
-                  title: fresh.title ?? f.title,
-                  semester: String(fresh.semester ?? f.semester),
-                }
-              : f
-          )));
-        }
-      } catch {}
+      // Update start/end dates minimal payload
+      await api.patch(`/feedback/simple/forms/${encodeURIComponent(formId)}/dates`, {
+        startDate: dateAdjust.start,
+        endDate: dateAdjust.end,
+      });
+      // Activate
+      await api.post(`/feedback/simple/forms/${encodeURIComponent(formId)}/publish`, { active: dateAdjustNextActive });
+      toast.success(dateAdjustNextActive ? 'Form activated with updated dates' : 'Form deactivated with updated dates');
+      // Refresh list to reflect changes
+      await refreshForms();
     } catch (e: any) {
-      // Revert on failure
-      setForms(prev => prev.map(f => (f.id === formId ? { ...f, isActive: !nextActive } : f)));
-      const msg = e?.response?.data?.message || 'Failed to update form status';
+      const msg = e?.response?.data?.message || 'Failed to update dates';
       toast.error(msg);
     } finally {
-      setTogglingId(prev => (prev === formId ? null : prev));
+      setDateAdjustFor(null);
     }
   };
 
@@ -639,7 +698,7 @@ const FeedbackGeneration: React.FC = () => {
     if (!confirmDeleteId) { setConfirmOpen(false); return; }
     try {
       await api.delete(`/feedback/simple/forms/${encodeURIComponent(confirmDeleteId)}`);
-      setForms(prev => prev.filter(f => f.id !== confirmDeleteId));
+      await refreshForms();
       toast.success('Feedback form deleted');
     } catch (e: any) {
       const msg = e?.response?.data?.message || 'Failed to delete feedback form';
@@ -783,7 +842,7 @@ const FeedbackGeneration: React.FC = () => {
                       type="text"
                       value={editForm.title || ''}
                       onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                      className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 dark:placeholder-gray-300"
+                      className="input-field"
                       placeholder="Enter form title"
                     />
                   </div>
@@ -792,7 +851,7 @@ const FeedbackGeneration: React.FC = () => {
                     <select
                       value={editForm.semester || ''}
                       onChange={(e) => setEditForm({ ...editForm, semester: e.target.value })}
-                      className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      className="input-field"
                     >
                       <option value="">Select semester</option>
                       {semesters.map(semester => (
@@ -810,8 +869,9 @@ const FeedbackGeneration: React.FC = () => {
                         setEditForm({ ...editForm, startDate: date ? format(date, 'yyyy-MM-dd') : '' })
                       }
                       dateFormat="yyyy-MM-dd"
-                      className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      className="input-field"
                       placeholderText="Select start date"
+                      onKeyDown={limitYearInput}
                       isClearable
                     />
                   </div>
@@ -823,9 +883,10 @@ const FeedbackGeneration: React.FC = () => {
                         setEditForm({ ...editForm, endDate: date ? format(date, 'yyyy-MM-dd') : '' })
                       }
                       dateFormat="yyyy-MM-dd"
-                      className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      className="input-field"
                       placeholderText="Select end date"
                       minDate={editForm.startDate ? new Date(editForm.startDate) : undefined}
+                      onKeyDown={limitYearInput}
                       isClearable
                     />
                   </div>
@@ -835,7 +896,7 @@ const FeedbackGeneration: React.FC = () => {
                   <textarea
                     value={editForm.description || ''}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                    className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 dark:placeholder-gray-300"
+                    className="input-field"
                     rows={3}
                     placeholder="Enter form description"
                   />
@@ -881,7 +942,7 @@ const FeedbackGeneration: React.FC = () => {
                 <h3 className="text-lg font-semibold mb-3">Select Subject</h3>
                 <div className="space-y-2">
                   <select
-                    className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="input-field"
                     value={(editForm.selectedSubjects && editForm.selectedSubjects[0]?.id) || ''}
                     onChange={(e) => {
                       const id = e.target.value;
@@ -906,7 +967,7 @@ const FeedbackGeneration: React.FC = () => {
                 <h3 className="text-lg font-semibold mb-3">Select Staff</h3>
                 <div className="space-y-2">
                   <select
-                    className="w-full p-2 border rounded-lg"
+                    className="input-field"
                     value={(editForm.selectedStaff && editForm.selectedStaff[0]?.id) || ''}
                     onChange={(e) => {
                       const id = e.target.value;
@@ -1051,19 +1112,6 @@ const FeedbackGeneration: React.FC = () => {
                       <Link size={16} />
                     </button>
                     <button
-                      onClick={() => toggleFormStatus(form.id)}
-                      disabled={togglingId === form.id}
-                      className={`p-2 rounded border transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
-                        form.isActive
-                          ? 'bg-orange-100 hover:bg-orange-200 border-orange-200 text-orange-700 hover:text-orange-800 dark:bg-orange-500/20 dark:hover:bg-orange-500/30 dark:border-orange-400/30 dark:text-orange-300'
-                          : 'bg-green-100 hover:bg-green-200 border-green-200 text-green-700 hover:text-green-800 dark:bg-green-500/20 dark:hover:bg-green-500/30 dark:border-green-400/30 dark:text-green-300'
-                      }`}
-                      title={form.isActive ? 'Deactivate' : 'Activate'}
-                      aria-busy={togglingId === form.id}
-                    >
-                      {form.isActive ? <X size={16} /> : <Plus size={16} />}
-                    </button>
-                    <button
                       onClick={() => deleteForm(form.id)}
                       className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                       title="Delete Form"
@@ -1104,7 +1152,7 @@ const FeedbackGeneration: React.FC = () => {
                       type="text"
                       value={newForm.title || ''}
                       onChange={(e) => setNewForm({ ...newForm, title: e.target.value })}
-                      className="w-full p-2 border rounded-lg"
+                      className="input-field"
                       placeholder="Enter form title"
                     />
                   </div>
@@ -1113,7 +1161,7 @@ const FeedbackGeneration: React.FC = () => {
                     <select
                       value={newForm.semester || ''}
                       onChange={(e) => setNewForm({ ...newForm, semester: e.target.value })}
-                      className="w-full p-2 border rounded-lg"
+                      className="input-field"
                     >
                       <option value="" disabled>Select semester</option>
                       {semesters.map(semester => (
@@ -1131,8 +1179,9 @@ const FeedbackGeneration: React.FC = () => {
                         setNewForm({ ...newForm, startDate: date ? format(date, 'yyyy-MM-dd') : '' })
                       }
                       dateFormat="yyyy-MM-dd"
-                      className="w-full p-2 border rounded-lg"
+                      className="input-field"
                       placeholderText="Select start date"
+                      onKeyDown={limitYearInput}
                       isClearable
                     />
                   </div>
@@ -1144,9 +1193,10 @@ const FeedbackGeneration: React.FC = () => {
                         setNewForm({ ...newForm, endDate: date ? format(date, 'yyyy-MM-dd') : '' })
                       }
                       dateFormat="yyyy-MM-dd"
-                      className="w-full p-2 border rounded-lg"
+                      className="input-field"
                       placeholderText="Select end date"
                       minDate={startDateObj || undefined}
+                      onKeyDown={limitYearInput}
                       isClearable
                     />
                   </div>
@@ -1156,7 +1206,7 @@ const FeedbackGeneration: React.FC = () => {
                   <textarea
                     value={newForm.description || ''}
                     onChange={(e) => setNewForm({ ...newForm, description: e.target.value })}
-                    className="w-full p-2 border rounded-lg"
+                    className="input-field"
                     rows={3}
                     placeholder="Enter form description"
                   />
@@ -1166,7 +1216,7 @@ const FeedbackGeneration: React.FC = () => {
                   <select
                     value={newForm.targetAudience || 'students'}
                     onChange={(e) => setNewForm({ ...newForm, targetAudience: e.target.value as 'students' | 'parents' | 'staff' })}
-                    className="w-full p-2 border rounded-lg"
+                    className="input-field"
                   >
                     {audiences.map(audience => (
                       <option key={audience.value} value={audience.value}>{audience.label}</option>
@@ -1206,63 +1256,69 @@ const FeedbackGeneration: React.FC = () => {
               <div>
                 <h3 className="text-lg font-semibold mb-3">Select Questions *</h3>
                 <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-4">
-                  {loadingLists && <div className="text-sm text-gray-500">Loading questions...</div>}
+                  {loadingLists && <div className="text-sm text-gray-500 dark:text-gray-400">Loading questions...</div>}
                   {listsError && <div className="text-sm text-red-600">{listsError}</div>}
                   {!loadingLists && !listsError && questions.length === 0 && (
                     <div className="text-sm text-orange-600">No questions found. Add questions to the Question Bank.</div>
                   )}
-                  {questions.map((question) => (
-                    <div key={question.id} className="flex items-start gap-3 p-2 hover:bg-gray-50 rounded">
-                      <input
-                        type="checkbox"
-                        checked={newForm.questions?.some(q => q.id === question.id) || false}
-                        onChange={() => handleQuestionToggle(question)}
-                        className="mt-1"
-                      />
-                      <div className="flex-1">
-                        {editingQuestion === question.id ? (
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              defaultValue={question.text}
-                              onBlur={(e) => handleEditQuestion(question.id, e.target.value)}
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleEditQuestion(question.id, e.currentTarget.value);
-                                }
-                              }}
-                              className="flex-1 p-1 border rounded"
-                              autoFocus
-                            />
-                            <button
-                              onClick={() => setEditingQuestion(null)}
-                              className="p-1 text-gray-500 hover:text-gray-700"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium">{question.text}</p>
-                              <p className="text-sm text-gray-500">
-                                Type: {question.type} | {question.required ? 'Required' : 'Optional'}
-                              </p>
-                            </div>
-                            {newForm.questions?.some(q => q.id === question.id) && (
+                  {questions.map((question) => {
+                    const selected = newForm.questions?.some(q => q.id === question.id) || false;
+                    const rowId = `q-new-${question.id}`;
+                    return (
+                      <label
+                        key={question.id}
+                        htmlFor={rowId}
+                        className={`flex items-start gap-3 p-2 rounded cursor-pointer transition-colors ${selected ? 'bg-brand-50 dark:bg-gray-700/60' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                      >
+                        <input
+                          id={rowId}
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => handleQuestionToggle(question)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          {editingQuestion === question.id ? (
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                defaultValue={question.text}
+                                onBlur={(e) => handleEditQuestion(question.id, e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleEditQuestion(question.id, (e.target as HTMLInputElement).value); }}
+                                className="input-field"
+                                autoFocus
+                              />
                               <button
-                                onClick={() => setEditingQuestion(question.id)}
-                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                title="Edit Question"
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingQuestion(null); }}
+                                className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                title="Cancel"
                               >
-                                <Edit className="w-4 h-4" />
+                                <X className="w-4 h-4" />
                               </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                            </div>
+                          ) : (
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-medium text-gray-900 dark:text-white">{question.text}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-300">Type: {question.type} | {question.required ? 'Required' : 'Optional'}</p>
+                              </div>
+                              {selected && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingQuestion(question.id); }}
+                                  className="p-1 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded"
+                                  title="Edit Question"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1429,6 +1485,60 @@ const FeedbackGeneration: React.FC = () => {
                   Form Link: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{previewForm.formLink}</span>
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Date Adjust Modal for (Re)Activating Forms */}
+      {dateAdjustFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setDateAdjustFor(null)} />
+          <div className="relative z-10 w-full max-w-md rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+              {dateAdjustNextActive ? 'Adjust dates to activate' : 'Adjust dates to deactivate'}
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              {dateAdjustNextActive
+                ? 'Current form dates are missing or expired. Update the date range and we’ll activate the form.'
+                : 'You are turning this form off. You can also update the date range used for reporting, then we’ll deactivate the form.'}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Start Date</label>
+                <DatePicker
+                  selected={dateAdjust.start ? new Date(dateAdjust.start) : null}
+                  onChange={(d: Date | null) => setDateAdjust((prev) => ({ ...prev, start: d ? format(d, 'yyyy-MM-dd') : '' }))}
+                  dateFormat="yyyy-MM-dd"
+                  className="input-field"
+                  placeholderText="Select start date"
+                  onKeyDown={limitYearInput}
+                  isClearable
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">End Date</label>
+                <DatePicker
+                  selected={dateAdjust.end ? new Date(dateAdjust.end) : null}
+                  onChange={(d: Date | null) => setDateAdjust((prev) => ({ ...prev, end: d ? format(d, 'yyyy-MM-dd') : '' }))}
+                  dateFormat="yyyy-MM-dd"
+                  className="input-field"
+                  placeholderText="Select end date"
+                  minDate={dateAdjust.start ? new Date(dateAdjust.start) : undefined}
+                  onKeyDown={limitYearInput}
+                  isClearable
+                />
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setDateAdjustFor(null)} className="px-4 py-2 rounded-lg border dark:border-gray-600 dark:text-gray-200">Cancel</button>
+              <button
+                type="button"
+                onClick={applyDateAdjustAndActivate}
+                className={`px-4 py-2 rounded-lg text-white disabled:opacity-50 ${dateAdjustNextActive ? 'bg-green-600' : 'bg-orange-600'}`}
+                disabled={(dateAdjust.start && dateAdjust.end && dateAdjust.start > dateAdjust.end) as any}
+              >
+                {dateAdjustNextActive ? 'Update & Activate' : 'Update & Deactivate'}
+              </button>
             </div>
           </div>
         </div>

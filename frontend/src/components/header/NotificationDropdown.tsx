@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Link } from "react-router-dom";
@@ -13,6 +13,16 @@ export default function NotificationDropdown() {
     setIsOpen(next);
     if (next) refresh();
   }
+
+  // Allow other parts of the app (e.g., Settings page) to request opening the notifications panel
+  useEffect(() => {
+    const handler = () => {
+      setIsOpen(true);
+      refresh();
+    };
+    window.addEventListener('open-notifications-dropdown', handler as EventListener);
+    return () => window.removeEventListener('open-notifications-dropdown', handler as EventListener);
+  }, [refresh]);
 
   function closeDropdown() {
     setIsOpen(false);
@@ -41,11 +51,11 @@ export default function NotificationDropdown() {
       >
         <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100 dark:border-gray-700">
           <h5 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Notifications</h5>
-          <button onClick={() => markAllRead()} className="text-xs text-indigo-600 hover:underline">Mark all as read</button>
+          <button onClick={() => markAllRead()} className="text-xs text-indigo-600 hover:underline dark:text-indigo-400">Mark all as read</button>
         </div>
         <ul className="flex flex-col h-auto overflow-y-auto custom-scrollbar">
           {items.length === 0 && (
-            <li className="px-4 py-3 text-sm text-gray-500">No notifications</li>
+            <li className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">No notifications</li>
           )}
           {items.map((n) => (
             <li key={n.id}>
@@ -59,13 +69,13 @@ export default function NotificationDropdown() {
                   {n.message && (
                     <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">{n.message}</span>
                   )}
-                  <span className="block text-[11px] text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString()}</span>
+                  <span className="block text-[11px] text-gray-400 dark:text-gray-500 mt-1">{new Date(n.createdAt).toLocaleString()}</span>
                 </span>
               </DropdownItem>
             </li>
           ))}
         </ul>
-        <Link to="/" className="block px-4 py-2 mt-3 text-sm font-medium text-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">View All Notifications</Link>
+        <Link to="/" className="block px-4 py-2 mt-3 text-sm font-medium text-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">View All Notifications</Link>
       </Dropdown>
     </div>
   );

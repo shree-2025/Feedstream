@@ -109,6 +109,25 @@ export default function staffRouter() {
     res.json({ items: mapped, total, page, limit, totalPages: Math.ceil(total / limit) });
   });
 
+  // CSV template for bulk upload (public for convenience under /api/staff/template.csv)
+  router.get('/template.csv', async (req, res) => {
+    const filename = 'staff_template.csv';
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    // Subjects column supports JSON array or semi-colon separated fallback
+    const header = 'name,email,role,department,subjects,status\n';
+    const rows = [
+      // Example with JSON array
+      '"Alice Johnson",alice@example.com,Professor,Computer Science,"[\"Data Structures\", \"Algorithms\"]",Active',
+      // Example with comma-free subjects (semicolon list)
+      '"Bob Kumar",bob.kumar@example.com,Assistant Professor,Electrical,"Power Systems; Control Theory",Active',
+      // Minimal example without department
+      '"Carol Lee",carol.lee@example.com,Lecturer,,"Computer Networks",Inactive',
+    ];
+    const csv = header + rows.join('\n') + '\n';
+    res.status(200).send(csv);
+  });
+
   // Create staff + assign subjects
   router.post('/', requireAuth(['DEPT']), async (req, res) => {
     const parsed = staffSchema.safeParse(req.body);

@@ -54,13 +54,19 @@ export default function Profile() {
           avatarUrl: p.avatarUrl || '',
         };
         if (!mounted) return;
-        setData(merged);
-        setAvatarPreview(merged.avatarUrl || '');
+        // Normalize avatar URL to absolute for consistent display across header/sidebar
+        const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/+$/g, '').replace(/\/$/g, '');
+        const absoluteAvatar = merged.avatarUrl && !String(merged.avatarUrl).startsWith('http')
+          ? `${apiBaseUrl}${merged.avatarUrl}`
+          : merged.avatarUrl;
+        const normalized = { ...merged, avatarUrl: absoluteAvatar };
+        setData(normalized);
+        setAvatarPreview(normalized.avatarUrl || '');
         // Ensure header/sidebar reflect stored avatar and correct name after reload
         const computedName = (user?.role === 'DepartmentAdmin' || user?.role === 'OrganizationAdmin')
           ? (merged.username || user?.name || '')
           : ([merged.firstName, merged.lastName].filter(Boolean).join(' ').trim() || merged.username || user?.name || '');
-        updateUser({ name: computedName, avatarUrl: merged.avatarUrl || user?.avatarUrl });
+        updateUser({ name: computedName, avatarUrl: normalized.avatarUrl || user?.avatarUrl });
       } catch {
         // ignore
       } finally {
@@ -109,7 +115,11 @@ export default function Profile() {
       const newName = (user?.role === 'DepartmentAdmin' || user?.role === 'OrganizationAdmin')
         ? (res.data?.username || '')
         : [res.data?.firstName, res.data?.lastName].filter(Boolean).join(' ').trim() || (res.data?.username || '');
-      const newAvatar = res.data?.avatarUrl || data.avatarUrl || '';
+      const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/+$/g, '').replace(/\/$/g, '');
+      const avatarResp = res.data?.avatarUrl || data.avatarUrl || '';
+      const newAvatar = avatarResp && !String(avatarResp).startsWith('http') ? `${apiBaseUrl}${avatarResp}` : avatarResp;
+      // Persist in component state as well so the Profile card shows the same image
+      setData(prev => ({ ...prev, avatarUrl: newAvatar }));
       updateUser({ name: newName || user?.name, avatarUrl: newAvatar || user?.avatarUrl });
       alert('Profile updated');
     } catch (err) {
@@ -119,6 +129,13 @@ export default function Profile() {
       setSaving(false);
     }
   }
+
+  // Enforce digits-only and max length 10 for phone/mobile input (handles typing and paste)
+  const onPhoneChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const raw = e.target.value || '';
+    const digitsOnly = raw.replace(/\D/g, '').slice(0, 10);
+    onChange('phone', digitsOnly);
+  };
 
   return (
     <div className="p-6">
@@ -133,43 +150,61 @@ export default function Profile() {
               {user?.role === 'DepartmentAdmin' ? (
                 <>
                   <div className="md:col-span-2">
-                    <label className="block text-sm text-gray-600 mb-1">Department Name</label>
-                    <input className="w-full border rounded-lg px-3 py-2" value={data.username} onChange={e => onChange('username', e.target.value)} placeholder="Department Name" />
+                    <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Department Name</label>
+                    <input className="input-field" value={data.username} onChange={e => onChange('username', e.target.value)} placeholder="Department Name" />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">Mobile</label>
-                    <input className="w-full border rounded-lg px-3 py-2" value={data.phone} onChange={e => onChange('phone', e.target.value)} placeholder="Phone" />
+                    <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Mobile</label>
+                    <input
+                      className="input-field"
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={10}
+                      value={data.phone}
+                      onChange={onPhoneChange}
+                      placeholder="Phone"
+                    />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm text-gray-600 mb-1">Email</label>
-                    <input className="w-full border rounded-lg px-3 py-2 bg-gray-100" value={data.email} disabled />
+                    <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Email</label>
+                    <input className="w-full p-2 border rounded-lg bg-gray-100 text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300" value={data.email} disabled />
                   </div>
                 </>
               ) : (
                 <>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">First name</label>
-                    <input className="w-full border rounded-lg px-3 py-2" value={data.firstName} onChange={e => onChange('firstName', e.target.value)} placeholder="First name" />
+                    <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">First name</label>
+                    <input className="input-field" value={data.firstName} onChange={e => onChange('firstName', e.target.value)} placeholder="First name" />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">Last name</label>
-                    <input className="w-full border rounded-lg px-3 py-2" value={data.lastName} onChange={e => onChange('lastName', e.target.value)} placeholder="Last name" />
+                    <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Last name</label>
+                    <input className="input-field" value={data.lastName} onChange={e => onChange('lastName', e.target.value)} placeholder="Last name" />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">Username</label>
-                    <input className="w-full border rounded-lg px-3 py-2" value={data.username} onChange={e => onChange('username', e.target.value)} placeholder="Username" />
+                    <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Username</label>
+                    <input className="input-field" value={data.username} onChange={e => onChange('username', e.target.value)} placeholder="Username" />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">Mobile</label>
-                    <input className="w-full border rounded-lg px-3 py-2" value={data.phone} onChange={e => onChange('phone', e.target.value)} placeholder="Phone" />
+                    <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Mobile</label>
+                    <input
+                      className="input-field"
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={10}
+                      value={data.phone}
+                      onChange={onPhoneChange}
+                      placeholder="Phone"
+                    />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm text-gray-600 mb-1">Email</label>
-                    <input className="w-full border rounded-lg px-3 py-2 bg-gray-100" value={data.email} disabled />
+                    <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Email</label>
+                    <input className="w-full p-2 border rounded-lg bg-gray-100 text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300" value={data.email} disabled />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm text-gray-600 mb-1">Bio</label>
-                    <textarea className="w-full border rounded-lg px-3 py-2" rows={4} value={data.bio} onChange={e => onChange('bio', e.target.value)} placeholder="Write something about you..." />
+                    <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Bio</label>
+                    <textarea className="input-field" rows={4} value={data.bio} onChange={e => onChange('bio', e.target.value)} placeholder="Write something about you..." />
                   </div>
                 </>
               )}
@@ -183,7 +218,7 @@ export default function Profile() {
           </div>
 
           <div className="space-y-4">
-            <div className="border rounded-xl p-4">
+            <div className="border rounded-xl p-4 dark:border-gray-600">
               <div className="flex items-center gap-4">
                 <div className="h-20 w-20 rounded-full overflow-hidden bg-gray-100">
                   {avatarPreview || data.avatarUrl ? (
@@ -194,12 +229,12 @@ export default function Profile() {
                   )}
                 </div>
                 <div>
-                  <div className="font-medium">{displayName || 'Unnamed User'}</div>
-                  <div className="text-sm text-gray-500">{data.email}</div>
+                  <div className="font-medium text-gray-900 dark:text-white">{displayName || 'Unnamed User'}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-300">{data.email}</div>
                 </div>
               </div>
               <div className="mt-3">
-                <label className="inline-block px-3 py-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <label className="inline-block px-3 py-2 border rounded-lg cursor-pointer hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
                   <input type="file" accept="image/*" className="hidden" onChange={onSelectAvatar} />
                   Upload new picture
                 </label>

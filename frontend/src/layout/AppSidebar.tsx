@@ -7,7 +7,6 @@ import {
   Briefcase as OrganizationIcon,
   Users,
   FileText as LogIcon,
-  Megaphone as MegaphoneIcon,
   ClipboardList,
   FileQuestion,
   BookOpen,
@@ -101,12 +100,12 @@ const navItems: NavItem[] = [
     path: "/department-admin/reports",
     roles: ["DepartmentAdmin"],
   },
-  {
-    name: "Announcements",
-    icon: <MegaphoneIcon />,
-    path: "/department-admin/announcements",
-    roles: ["DepartmentAdmin"],
-  },
+  // {
+  //   name: "Announcements",
+  //   icon: <MegaphoneIcon />,
+  //   path: "/department-admin/announcements",
+  //   roles: ["DepartmentAdmin"],
+  // },
   {
     name: "Staff Dashboard",
     icon: <GridIcon />,
@@ -131,12 +130,12 @@ const navItems: NavItem[] = [
     path: "/staff/submit-activity",
     roles: ["Staff"],
   },
-  {
-    name: "Announcements",
-    icon: <MegaphoneIcon />,
-    path: "/staff/announcements",
-    roles: ["Staff"],
-  },
+  // {
+  //   name: "Announcements",
+  //   icon: <MegaphoneIcon />,
+  //   path: "/staff/announcements",
+  //   roles: ["Staff"],
+  // },
   {
     name: "Student Dashboard",
     icon: <GridIcon />,
@@ -168,7 +167,7 @@ const AppSidebar: React.FC = () => {
   const { theme } = useTheme();
   const userRole = user?.role || "Student"; // Default to Student if no user
 
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { isExpanded, isMobileOpen } = useSidebar();
   const location = useLocation();
 
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
@@ -227,9 +226,7 @@ const AppSidebar: React.FC = () => {
                 className={`menu-item group ${
                   openSubmenu === index ? "menu-item-active" : "menu-item-inactive"
                 } cursor-pointer ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "lg:justify-start"
+                  !isExpanded ? "lg:justify-center" : "lg:justify-start"
                 }`}
               >
                 <span
@@ -241,10 +238,10 @@ const AppSidebar: React.FC = () => {
                 >
                   {nav.icon}
                 </span>
-                {(isExpanded || isHovered || isMobileOpen) && (
+                {(isExpanded || isMobileOpen) && (
                   <span className="menu-item-text">{nav.name}</span>
                 )}
-                {(isExpanded || isHovered || isMobileOpen) && (
+                {(isExpanded || isMobileOpen) && (
                   <ChevronDownIcon
                     className={`ml-auto w-5 h-5 transition-transform duration-200 ${
                       openSubmenu === index ? "rotate-180 text-brand-500" : ""
@@ -269,13 +266,13 @@ const AppSidebar: React.FC = () => {
                   >
                     {nav.icon}
                   </span>
-                  {(isExpanded || isHovered || isMobileOpen) && (
+                  {(isExpanded || isMobileOpen) && (
                     <span className="menu-item-text">{nav.name}</span>
                   )}
                 </Link>
               )
             )}
-            {nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
+            {nav.subItems && (isExpanded || isMobileOpen) && (
               <div
                 ref={(el) => {
                   subMenuRefs.current[`${index}`] = el;
@@ -371,10 +368,8 @@ const AppSidebar: React.FC = () => {
       {/* Desktop Sidebar */}
       <aside
         className={`hidden lg:block fixed top-0 left-0 z-30 h-screen transition-width duration-300 bg-white dark:bg-gray-800 dark:border-r dark:border-gray-700 ${
-          isExpanded || isHovered ? 'lg:w-64' : 'lg:w-20'
+          isExpanded ? 'lg:w-64' : 'lg:w-20'
         }`}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-center h-16 border-b dark:border-gray-700">
@@ -388,7 +383,7 @@ const AppSidebar: React.FC = () => {
           </div>
 
           {/* User Info */}
-          {user && (isExpanded || isHovered) && (
+          {user && isExpanded && (
             <div className="px-4 py-3 border-b dark:border-gray-700">
               <div className="flex items-center space-x-3">
                 {user.avatarUrl ? (

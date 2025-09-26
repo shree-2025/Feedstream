@@ -9,6 +9,8 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // Fail fast on network issues in dev
+  timeout: 10000,
 });
 
 // Add a request interceptor to include the auth token
@@ -30,17 +32,35 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      console.error('API Error:', error.response.data);
-      return Promise.reject(error.response.data);
+      // The request was made and the server responded with a non-2xx status
+      const { status, config } = error.response;
+      const method = (config?.method || 'GET').toString().toUpperCase();
+      const url = config?.url || '(unknown url)';
+      const data = error.response.data;
+      const msg = (data && (data.error || data.message)) || `Request failed with status ${status}`;
+      console.error(`API Error ${status} ${method} ${url}:`, data);
+
+      // Global 401 handler: token missing/expired -> force sign-in
+      if (status === 401) {
+        try {
+          localStorage.removeItem('elog_token');
+          localStorage.removeItem('elog_user');
+        } catch {}
+        if (typeof window !== 'undefined' && window.location.pathname !== '/signin') {
+          window.location.href = '/signin';
+        }
+      }
+      return Promise.reject({ message: msg, status, data, url });
     } else if (error.request) {
       // The request was made but no response was received
-      console.error('API Error: No response received', error.request);
-      return Promise.reject({ message: 'No response from server' });
+      const { config } = error;
+      const method = (config?.method || 'GET').toString().toUpperCase();
+      const url = config?.url || '(unknown url)';
+      console.error(`API Error: No response received for ${method} ${url}`, error.request);
+      return Promise.reject({ message: 'No response from server', url });
     } else {
       // Something happened in setting up the request that triggered an Error
-      console.error('API Error:', error.message);
+      console.error('API Error (setup):', error.message);
       return Promise.reject({ message: error.message });
     }
   }

@@ -188,9 +188,44 @@ layer(base);
   body {
     @apply relative font-normal font-outfit z-1 bg-gray-50;
   }
-  /* Force all text to white in dark mode across the app */
-  .dark :where(body, body *) {
-    color: #ffffff !important;
+  /* In dark mode, avoid forcing all text to white globally.
+     Rely on component-level `dark:` classes for accurate colors.
+     Provide only a sensible base color on dark backgrounds. */
+  .dark body {
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+/* Improve native form controls in dark mode */
+@layer base {
+  /* Placeholder color for inputs/textareas in dark mode */
+  .dark ::placeholder {
+    color: #9ca3af; /* gray-400 */
+    opacity: 1;
+  }
+
+  /* Native select control and its options */
+  .dark select,
+  .dark select:active,
+  .dark select:focus {
+    background-color: #1f2937; /* gray-800 */
+    color: #e5e7eb; /* gray-200 */
+    border-color: #4b5563; /* gray-600 */
+    outline: none;
+  }
+  .dark option,
+  .dark optgroup {
+    background-color: #111827; /* gray-900 */
+    color: #e5e7eb; /* gray-200 */
+  }
+  .dark option:checked {
+    background-color: #374151; /* gray-700 */
+    color: #f9fafb; /* gray-50 */
+  }
+
+  /* Disabled fields readability */
+  .dark :disabled::placeholder {
+    color: #6b7280; /* gray-500 */
   }
 }
 
